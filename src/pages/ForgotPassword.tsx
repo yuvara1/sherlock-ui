@@ -1,25 +1,32 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react"
 import { GridBackground } from "@/components/ui/GridBackground"
 import { BorderBeam } from "@/components/ui/BorderBeam"
 import { MovingBorderBtn } from "@/components/ui/MovingBorderBtn"
+import { authApi, authErrorMessage } from "@/api/auth"
 export default function ForgotPassword() {
   const [email, setEmail] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [focused, setFocused] = useState(false)
-  const handleSubmit = (e: React.FormEvent) => {
+  const [error, setError] = useState("")
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
+    setError("")
+    try {
+      await authApi.forgotPassword(email.trim().toLowerCase())
       setSubmitted(true)
-    }, 1200)
+    } catch (err) {
+      setError(authErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
   }
   return (
-    <div className="dark [min-height:100vh] [background:#000] [display:flex] [align-items:center] [justify-content:center] [padding:24px] [font-family:Geist,_sans-serif] [position:relative] [overflow:hidden]">
+    <div className="public-surface auth-surface dark [min-height:100vh] [background:#000] [display:flex] [align-items:center] [justify-content:center] [padding:24px] [font-family:Geist,_sans-serif] [position:relative] [overflow:hidden]">
       <GridBackground dots className="absolute inset-0 opacity-15" />
 
       {/* Subtle glow */}
@@ -105,7 +112,10 @@ export default function ForgotPassword() {
                     className="[display:flex] [flex-direction:column] [gap:18px]"
                   >
                     <div className="[display:flex] [flex-direction:column] [gap:6px]">
-                      <label className="[font-size:13px] [font-weight:500] [color:#ededed]">
+                      <label
+                        htmlFor="recovery-email"
+                        className="[font-size:13px] [font-weight:500] [color:#ededed]"
+                      >
                         Email address
                       </label>
                       <div className="[position:relative]">
@@ -114,6 +124,12 @@ export default function ForgotPassword() {
                           className="[position:absolute] [left:12px] [top:50%] [transform:translateY(-50%)] [color:rgba(255,255,255,0.3)] [pointer-events:none]"
                         />
                         <input
+                          id="recovery-email"
+                          autoComplete="email"
+                          aria-invalid={!!error}
+                          aria-describedby={
+                            error ? "recovery-error" : undefined
+                          }
                           type="email"
                           placeholder="you@company.com"
                           value={email}
@@ -139,6 +155,16 @@ export default function ForgotPassword() {
                         />
                       </div>
                     </div>
+
+                    {error && (
+                      <p
+                        id="recovery-error"
+                        role="alert"
+                        className="text-[12px] text-red-400 -mt-2"
+                      >
+                        {error}
+                      </p>
+                    )}
 
                     <MovingBorderBtn type="submit" disabled={loading}>
                       {loading ? (

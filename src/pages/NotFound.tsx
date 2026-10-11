@@ -1,7 +1,8 @@
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router"
 import { motion } from "motion/react"
 import { ArrowLeft, ArrowRight, Home, Search } from "lucide-react"
 import { NavbarLogo } from "@/components/ui/resizable-navbar"
+import { Button } from "@/components/ui/button"
 const QUICK_LINKS = [
   { label: "Overview", to: "/app/overview" },
   { label: "Incidents", to: "/app/incidents" },
@@ -11,7 +12,7 @@ const QUICK_LINKS = [
 export default function NotFound() {
   const navigate = useNavigate()
   return (
-    <div className="dark [min-height:100vh] [background:#000] [color:#fff] [font-family:Geist,_sans-serif] [display:flex] [flex-direction:column] [overflow-x:hidden]">
+    <div className="public-surface dark [min-height:100vh] [background:#000] [color:#fff] [font-family:Geist,_sans-serif] [display:flex] [flex-direction:column] [overflow-x:hidden]">
       {/* faint dot grid */}
       <div className="[position:fixed] [inset:0] [z-index:0] [pointer-events:none] [background-image:radial-gradient(circle,_rgba(255,255,255,0.05)_1px,_transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_40%,_#000_20%,_transparent_75%)] [-webkit-mask-image:radial-gradient(ellipse_70%_60%_at_50%_40%,_#000_20%,_transparent_75%)]" />
 
@@ -47,20 +48,19 @@ export default function NotFound() {
 
           {/* actions — stack on mobile, row on wider */}
           <div className="[display:flex] [flex-wrap:wrap] [gap:12px] [justify-content:center] [margin-bottom:40px]">
-            <Link
-              to="/"
-              className="[text-decoration:none] [flex:1_1_auto] [max-width:220px]"
-            >
-              <button className="[width:100%] [display:inline-flex] [align-items:center] [justify-content:center] [gap:8px] [font-size:14px] [font-weight:600] [color:#000] [background:#fff] [border:none] [border-radius:10px] [padding:12px_22px] [cursor:pointer] [transition:opacity_0.15s] hover:[opacity:0.85]">
-                <Home size={15} /> Back home
-              </button>
-            </Link>
-            <button
+            <Button asChild size="lg" className="flex-1">
+              <Link to="/">
+                <Home size={15} aria-hidden="true" /> Back home
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => navigate(-1)}
-              className="[flex:1_1_auto] [max-width:220px] [display:inline-flex] [align-items:center] [justify-content:center] [gap:8px] [font-size:14px] [font-weight:500] [color:rgba(255,255,255,0.7)] [background:rgba(255,255,255,0.05)] [border:1px_solid_rgba(255,255,255,0.12)] [border-radius:10px] [padding:12px_22px] [cursor:pointer] [transition:all_0.15s] hover:[background:rgba(255,255,255,0.09)] hover:[color:#fff]"
+              className="flex-1"
             >
-              <ArrowLeft size={15} /> Go back
-            </button>
+              <ArrowLeft size={15} aria-hidden="true" /> Go back
+            </Button>
           </div>
 
           {/* quick links */}

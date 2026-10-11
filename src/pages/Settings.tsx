@@ -1,1120 +1,913 @@
-import { useState } from "react"
+import PageHeading from "@/components/workspace/PageHeading"
+import { useCallback, useEffect, useState, type FormEvent } from "react"
+import { useNavigate, useSearchParams } from "react-router"
 import {
-  Globe,
-  Key,
-  Users,
   Bell,
-  Shield,
-  Copy,
-  Check,
-  Plus,
-  MoreHorizontal,
-  Trash2,
   Download,
+  Globe,
+  KeyRound,
+  LogOut,
+  Shield,
+  Trash2,
+  Users,
+  UserRound,
 } from "lucide-react"
-import { SherlockSelect } from "@/components/ui/SherlockSelect"
-/* ─── Constants ─── */
-const MONO = "Geist Mono, monospace"
-const SANS = "Geist, sans-serif"
-/* ─── Nav tabs ─── */
-const NAV_TABS = [
-  { id: "general", label: "General", icon: Globe },
-  { id: "apikeys", label: "API Keys", icon: Key },
-  { id: "team", label: "Team", icon: Users },
-  { id: "alerts", label: "Alerts", icon: Bell },
-  { id: "security", label: "Security", icon: Shield },
-]
-/* ─── Data ─── */
-const API_KEYS = [
-  {
-    id: "k1",
-    name: "Production Telemetry",
-    prefix: "demo_live_x8aF",
-    env: "production",
-    created: "2026-08-01",
-    lastUsed: "2 min ago",
-    status: "active",
-    creator: "Jane Doe",
-  },
-  {
-    id: "k2",
-    name: "Staging Integration",
-    prefix: "demo_test_a1bC",
-    env: "staging",
-    created: "2026-07-15",
-    lastUsed: "1h ago",
-    status: "active",
-    creator: "Alex Kim",
-  },
-  {
-    id: "k3",
-    name: "CI/CD Pipeline",
-    prefix: "demo_live_y9zA",
-    env: "production",
-    created: "2026-06-10",
-    lastUsed: "12h ago",
-    status: "active",
-    creator: "Sam Chen",
-  },
-  {
-    id: "k4",
-    name: "Dev local testing",
-    prefix: "demo_test_z0Aa",
-    env: "development",
-    created: "2026-05-20",
-    lastUsed: "3d ago",
-    status: "revoked",
-    creator: "Pat Lee",
-  },
-]
-const FULL_KEYS: Record<string, string> = {
-  k1: "demo_live_x8aF3kP9nQwR2mLvZ5tY7uB4cD6eHjI0mKpW",
-  k2: "demo_test_a1bC2dE3fG4hI5jK6lM7nO8pQ9rS0tUvXy",
-  k3: "demo_live_y9zA0bB1cC2dD3eE4fF5gG6hH7iI8jJkLm",
-  k4: "demo_test_z0Aa1bB2cC3dD4eE5fF6gG7hH8iI9jKkLl",
-}
-const TEAM = [
-  {
-    id: "u1",
-    name: "Jane Doe",
-    email: "jane@acme.com",
-    role: "owner",
-    avatar: "JD",
-    joined: "2026-01-12",
-  },
-  {
-    id: "u2",
-    name: "Alex Kim",
-    email: "alex@acme.com",
-    role: "admin",
-    avatar: "AK",
-    joined: "2026-02-03",
-  },
-  {
-    id: "u3",
-    name: "Sam Chen",
-    email: "sam@acme.com",
-    role: "developer",
-    avatar: "SC",
-    joined: "2026-03-15",
-  },
-  {
-    id: "u4",
-    name: "Pat Lee",
-    email: "pat@acme.com",
-    role: "developer",
-    avatar: "PL",
-    joined: "2026-04-22",
-  },
-  {
-    id: "u5",
-    name: "Jordan Wu",
-    email: "jordan@acme.com",
-    role: "viewer",
-    avatar: "JW",
-    joined: "2026-06-01",
-  },
-]
-const ALERT_RULES_DEFAULT = [
-  {
-    id: "r1",
-    name: "Error rate > 5%",
-    trigger: "error_rate",
-    threshold: "5%",
-    severity: "critical",
-    channel: "Slack #alerts",
-    enabled: true,
-  },
-  {
-    id: "r2",
-    name: "P99 latency > 2s",
-    trigger: "latency_p99",
-    threshold: "2000ms",
-    severity: "high",
-    channel: "PagerDuty",
-    enabled: true,
-  },
-  {
-    id: "r3",
-    name: "Service down > 30s",
-    trigger: "health_check",
-    threshold: "30s",
-    severity: "critical",
-    channel: "PagerDuty",
-    enabled: true,
-  },
-  {
-    id: "r4",
-    name: "Kafka lag > 50K",
-    trigger: "kafka_lag",
-    threshold: "50000",
-    severity: "medium",
-    channel: "Slack #infra",
-    enabled: false,
-  },
-  {
-    id: "r5",
-    name: "Deploy failure",
-    trigger: "deployment",
-    threshold: "any",
-    severity: "high",
-    channel: "Slack #deploys",
-    enabled: true,
-  },
-]
-/* ─── Style helpers ─── */
-function roleStyle(r: string) {
-  if (r === "owner")
-    return {
-      color: "var(--accent)",
-      bg: "var(--accent-bg)",
-      border: "var(--accent-border)",
-    }
-  if (r === "admin")
-    return {
-      color: "var(--yellow)",
-      bg: "var(--yellow-bg)",
-      border: "var(--yellow-border)",
-    }
-  if (r === "developer")
-    return {
-      color: "var(--green)",
-      bg: "var(--green-bg)",
-      border: "var(--green-border)",
-    }
-  return { color: "var(--text-3)", bg: "var(--bg-3)", border: "var(--border)" }
-}
-function severityStyle(s: string) {
-  if (s === "critical")
-    return {
-      color: "var(--red)",
-      bg: "var(--red-bg)",
-      border: "var(--red-border)",
-    }
-  if (s === "high")
-    return {
-      color: "var(--yellow)",
-      bg: "var(--yellow-bg)",
-      border: "var(--yellow-border)",
-    }
-  if (s === "medium")
-    return {
-      color: "var(--accent)",
-      bg: "var(--accent-bg)",
-      border: "var(--accent-border)",
-    }
-  return { color: "var(--text-3)", bg: "var(--bg-3)", border: "var(--border)" }
-}
-function envStyle(env: string) {
-  if (env === "production")
-    return {
-      color: "var(--red)",
-      bg: "var(--red-bg)",
-      border: "var(--red-border)",
-    }
-  if (env === "staging")
-    return {
-      color: "var(--yellow)",
-      bg: "var(--yellow-bg)",
-      border: "var(--yellow-border)",
-    }
-  return { color: "var(--text-4)", bg: "var(--bg-3)", border: "var(--border)" }
-}
-/* ─── Atoms ─── */
-function CopyBtn({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <button
-      onClick={() => {
-        navigator.clipboard?.writeText(value).catch(() => {})
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-      }}
-      className="[background:none] [border:none] [cursor:pointer] [color:var(--text-4)] [padding:2px] [display:flex] hover:[color:var(--text-2)]"
-    >
-      {copied ? <Check size={13} /> : <Copy size={13} />}
-    </button>
-  )
-}
-function Toggle({
-  on,
-  onChange,
-}: {
-  on: boolean
-  onChange: (v: boolean) => void
-}) {
-  return (
-    <button
-      onClick={() => onChange(!on)}
-      className={[
-        "[width:36px] [height:20px] [border-radius:10px] [border:none] [cursor:pointer] [padding:2px] [transition:background_0.2s] [display:flex] [align-items:center] [flex-shrink:0]",
-        on ? "[background:var(--accent)]" : "[background:var(--bg-3)]",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      <span
-        style={{
-          transform: `translateX(${on ? 16 : 0}px)`,
-        }}
-        className="[width:16px] [height:16px] [border-radius:50%] [background:#fff] [transition:transform_0.2s] [box-shadow:0_1px_3px_rgba(0,0,0,0.2)]"
-      />
-    </button>
-  )
-}
-function SectionHeader({
-  title,
-  action,
-}: {
-  title: string
-  action?: React.ReactNode
-}) {
-  return (
-    <div className="[display:flex] [align-items:center] [justify-content:space-between] [padding:10px_16px] [border-bottom:1px_solid_var(--border)]">
-      <span
-        style={{
-          fontFamily: SANS,
-        }}
-        className="[font-size:13px] [font-weight:600] [letter-spacing:-0.006em] [color:var(--text-1)]"
-      >
-        {title}
-      </span>
-      {action}
-    </div>
-  )
-}
-function TableRow({
-  children,
-  last,
-  isDisabled,
-}: {
-  children: React.ReactNode
-  last?: boolean
-  isDisabled?: boolean
-}) {
-  return (
-    <div
-      className={[
-        [
-          "[display:flex] [align-items:center] [gap:12px] [padding:0_16px] [height:44px] [transition:background_0.08s]",
-          last
-            ? "[border-bottom:none]"
-            : "[border-bottom:1px_solid_var(--border)]",
-          isDisabled ? "[opacity:0.5]" : "[opacity:1]",
-        ]
-          .filter(Boolean)
-          .join(" "),
-        "hover:[background:var(--bg-3)]",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {children}
-    </div>
-  )
-}
-function Badge({
-  label,
-  color,
-  bg,
-  border,
-}: {
-  label: string
-  color: string
-  bg: string
-  border: string
-}) {
-  return (
-    <span
-      style={{
-        color,
-        background: bg,
-        border: `1px solid ${border}`,
-        fontFamily: MONO,
-        textTransform: "capitalize" as const,
-      }}
-      className="[font-size:11px] [font-weight:500] [padding:2px_7px] [border-radius:5px] [flex-shrink:0]"
-    >
-      {label}
-    </span>
-  )
-}
-function ActionBtn({
-  children,
-  primary,
-  danger,
-}: {
-  children: React.ReactNode
-  primary?: boolean
-  danger?: boolean
-}) {
-  let bg = "transparent",
-    color = "var(--text-2)",
-    border = "1px solid var(--border)"
-  if (primary) {
-    bg = "var(--accent)"
-    color = "#fff"
-    border = "none"
-  }
-  if (danger) {
-    bg = "transparent"
-    color = "var(--red)"
-    border = "1px solid var(--red-border)"
-  }
-  return (
-    <button
-      style={{
-        border,
-        background: bg,
-        color,
-        fontFamily: SANS,
-      }}
-      className={[
-        [
-          "[display:flex] [align-items:center] [gap:6px] [padding:7px_14px] [border-radius:8px] [font-size:13px] [cursor:pointer] [transition:opacity_0.12s,_background_0.12s]",
-          primary ? "[font-weight:500]" : "[font-weight:400]",
-        ]
-          .filter(Boolean)
-          .join(" "),
-        "hover:[opacity:0.8]",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {children}
-    </button>
-  )
-}
-const inp = {
-  padding: "8px 12px",
-  borderRadius: 8,
-  fontSize: 13,
-  background: "var(--bg)",
-  border: "1px solid var(--border-2)",
-  color: "var(--text-1)",
-  fontFamily: SANS,
-  outline: "none",
-  width: "100%",
-} as React.CSSProperties
-function FieldRow({
-  label,
-  hint,
-  children,
-}: {
-  label: string
-  hint?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="min-w-0 max-[640px]:grid-cols-1 max-[640px]:gap-2 max-[640px]:py-3 max-[640px]:[&>div:last-child]:min-w-0 max-[640px]:[&_button]:w-full max-[640px]:[&_button]:min-w-0 [display:grid] [grid-template-columns:200px_1fr] [align-items:start] [gap:24px] [padding:14px_0] [border-bottom:1px_solid_var(--border)]">
-      <div>
-        <p
-          style={{
-            fontFamily: SANS,
-          }}
-          className="[font-size:13px] [font-weight:500] [color:var(--text-1)] [margin:0_0_3px] [letter-spacing:-0.004em]"
-        >
-          {label}
-        </p>
-        {hint && (
-          <p
-            style={{
-              fontFamily: SANS,
-            }}
-            className="[font-size:11px] [color:var(--text-4)] [margin:0] [line-height:1.5]"
-          >
-            {hint}
-          </p>
-        )}
-      </div>
-      <div>{children}</div>
-    </div>
-  )
-}
-/* ─── Tab content components ─── */
+import {
+  workspaceApi,
+  type Role,
+  type SecuritySettings,
+  type TeamMember,
+} from "@/api/workspace"
+import { authApi, authErrorMessage } from "@/api/auth"
+import { projectsApi } from "@/api/projects"
+import { useAuthStore } from "@/stores/authStore"
+import type { Environment } from "@/types"
+import ApiKeysPanel from "@/components/workspace/ApiKeysPanel"
+import {
+  Button,
+  Field,
+  FormDialog,
+  inputClass,
+  Loading,
+  Notice,
+  panelClass,
+  useResource,
+} from "@/components/workspace/Controls"
+
 function GeneralTab() {
-  const [region, setRegion] = useState("us-east-1")
-  const [defaultEnv, setDefaultEnv] = useState("production")
-  const [dataRetention, setDataRetention] = useState("30")
-  return (
-    <div>
-      <div className="[padding:0_20px] [border-radius:8px] [border:1px_solid_var(--border)] [background:var(--bg-2)]">
-        <FieldRow label="Workspace name" hint="Display name for this workspace">
-          <input defaultValue="Acme E-Commerce" style={inp} />
-        </FieldRow>
-        <FieldRow label="Slug" hint="Used in API calls and URL paths">
-          <input
-            defaultValue="acme-ecommerce"
-            style={{ ...inp, fontFamily: MONO }}
-          />
-        </FieldRow>
-        <FieldRow label="Region" hint="Primary data region for this workspace">
-          <SherlockSelect
-            value={region}
-            onChange={setRegion}
-            options={[
-              { value: "us-east-1", label: "us-east-1 (N. Virginia)" },
-              { value: "us-west-2", label: "us-west-2 (Oregon)" },
-              { value: "eu-west-1", label: "eu-west-1 (Ireland)" },
-              { value: "ap-southeast-1", label: "ap-southeast-1 (Singapore)" },
-            ]}
-            minWidth={220}
-          />
-        </FieldRow>
-        <FieldRow label="Plan" hint="Current billing plan">
-          <div className="[display:flex] [align-items:center] [gap:10px]">
-            <span
-              style={{
-                fontFamily: MONO,
-              }}
-              className="[font-size:13px] [font-weight:600] [color:var(--accent)]"
-            >
-              Pro
-            </span>
-            <span
-              style={{
-                fontFamily: MONO,
-              }}
-              className="[font-size:11px] [padding:2px_7px] [border-radius:5px] [background:var(--accent-bg)] [border:1px_solid_var(--accent-border)] [color:var(--accent)]"
-            >
-              $99 / mo
-            </span>
-            <button
-              style={{
-                fontFamily: SANS,
-              }}
-              className="[font-size:12px] [color:var(--accent)] [background:none] [border:none] [cursor:pointer]"
-            >
-              Upgrade
-            </button>
-          </div>
-        </FieldRow>
-        <FieldRow label="Default environment" hint="Environment shown on login">
-          <SherlockSelect
-            value={defaultEnv}
-            onChange={setDefaultEnv}
-            options={[
-              { value: "production", label: "production" },
-              { value: "staging", label: "staging" },
-              { value: "development", label: "development" },
-            ]}
-            minWidth={160}
-          />
-        </FieldRow>
-        <FieldRow label="Data retention" hint="How long telemetry is stored">
-          <SherlockSelect
-            value={dataRetention}
-            onChange={setDataRetention}
-            options={[
-              { value: "7", label: "7 days" },
-              { value: "14", label: "14 days" },
-              { value: "30", label: "30 days" },
-              { value: "90", label: "90 days" },
-            ]}
-            minWidth={120}
-          />
-        </FieldRow>
-        <div className="[padding:16px_0_4px]">
-          <ActionBtn primary>Save changes</ActionBtn>
-        </div>
+  const role = useAuthStore((state) => state.user?.role)
+  const manage = role === "OWNER" || role === "ADMIN"
+  const resource = useResource(
+    useCallback(async () => {
+      const organization = await workspaceApi.get()
+      const subscription = manage ? await workspaceApi.subscription() : null
+      return { organization, subscription }
+    }, [manage]),
+  )
+  const [name, setName] = useState("")
+  const [timezone, setTimezone] = useState("UTC")
+  const [region, setRegion] = useState("US_EAST_1")
+  const [environment, setEnvironment] = useState<Environment>("production")
+  const [retention, setRetention] = useState(30)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [deleting, setDeleting] = useState(false)
+  const [confirmation, setConfirmation] = useState("")
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (resource.data) {
+      const organization = resource.data.organization
+      setName(organization.name)
+      setTimezone(organization.timezone)
+      setRegion(organization.region)
+      setEnvironment(organization.defaultEnvironment)
+      setRetention(organization.dataRetentionDays)
+    }
+  }, [resource.data])
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    setBusy(true)
+    setError("")
+    setSuccess("")
+    try {
+      await workspaceApi.update({
+        name: name.trim(),
+        timezone,
+        region,
+        defaultEnvironment: environment,
+        dataRetentionDays: retention,
+      })
+      setSuccess("Workspace settings saved.")
+      await resource.reload()
+    } catch (failure) {
+      setError(authErrorMessage(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function remove() {
+    setBusy(true)
+    setError("")
+    try {
+      await workspaceApi.delete()
+      useAuthStore.getState().logout()
+      navigate("/login", { replace: true })
+    } catch (failure) {
+      setError(authErrorMessage(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (resource.loading) return <Loading />
+  if (!resource.data)
+    return (
+      <div className="space-y-3">
+        <Notice message={resource.error} />
+        <Button onClick={() => void resource.reload()}>Retry</Button>
       </div>
-
-      {/* Danger zone */}
-      <div className="[margin-top:24px] [padding:16px_20px] [border-radius:8px] [background:var(--red-bg)] [border:1px_solid_var(--red-border)]">
-        <p
-          style={{
-            fontFamily: SANS,
-          }}
-          className="[font-size:13px] [font-weight:600] [color:var(--red)] [margin:0_0_8px]"
+    )
+  const { organization, subscription } = resource.data
+  return (
+    <div className="space-y-6">
+      <Notice message={error || resource.error} />
+      <Notice message={success} success />
+      <form onSubmit={save} className={`${panelClass} space-y-5 p-5`}>
+        <fieldset
+          disabled={busy || !manage}
+          className="grid gap-5 sm:grid-cols-2"
         >
-          Danger zone
-        </p>
-        <div className="[display:flex] [align-items:center] [justify-content:space-between] [gap:16px] [flex-wrap:wrap]">
-          <p className="[font-size:12px] [color:var(--text-3)] [margin:0] [line-height:1.6]">
-            Deleting this workspace is permanent and cannot be undone. All
-            telemetry, traces, logs, incidents, API keys, and settings will be
-            permanently removed.
-          </p>
-          <ActionBtn danger>Delete workspace</ActionBtn>
-        </div>
-      </div>
-    </div>
-  )
-}
-function ApiKeysTab() {
-  return (
-    <div className="[display:flex] [flex-direction:column] [gap:16px]">
-      <div className="[padding:12px_16px] [border-radius:8px] [background:var(--accent-bg)] [border:1px_solid_var(--accent-border)] [display:flex] [gap:10px] [align-items:flex-start]">
-        <Key
-          size={13}
-          className="[color:var(--accent)] [flex-shrink:0] [margin-top:1px]"
-        />
-        <p className="[font-size:12px] [color:var(--text-3)] [margin:0] [line-height:1.6]">
-          API keys authenticate your services and allow them to send telemetry.
-          Keys are shown once when created — store them securely in a secrets
-          manager.
-        </p>
-      </div>
-
-      <div className="overflow-x-auto max-w-full [border:1px_solid_var(--border)] [border-radius:8px] [background:var(--bg-2)]">
-        <SectionHeader
-          title={`API Keys (${API_KEYS.filter((k) => k.status === "active").length} active)`}
-          action={
-            <ActionBtn primary>
-              <Plus size={12} />
-              Create API Key
-            </ActionBtn>
-          }
-        />
-
-        {/* Table header */}
-        <div className="[display:grid] [grid-template-columns:1fr_160px_100px_100px_100px_80px_80px] [min-width:640px] [padding:0_16px] [height:36px] [border-bottom:1px_solid_var(--border)] [background:var(--bg-3)] [align-items:center] [gap:12px]">
-          {[
-            "Name",
-            "Prefix",
-            "Environment",
-            "Created",
-            "Last used",
-            "Status",
-            "",
-          ].map((h) => (
-            <span
-              key={h}
-              style={{
-                fontFamily: MONO,
-              }}
-              className="[font-size:11px] [color:var(--text-4)] [font-weight:600] [letter-spacing:0.02em]"
-            >
-              {h}
-            </span>
-          ))}
-        </div>
-
-        {API_KEYS.map((k, i) => {
-          const es = envStyle(k.env)
-          return (
-            <div
-              key={k.id}
-              className={[
-                [
-                  "[display:grid] [grid-template-columns:1fr_160px_100px_100px_100px_80px_80px] [min-width:640px] [padding:0_16px] [height:44px] [align-items:center] [gap:12px] [transition:background_0.08s]",
-                  i < API_KEYS.length - 1
-                    ? "[border-bottom:1px_solid_var(--border)]"
-                    : "[border-bottom:none]",
-                  k.status === "revoked" ? "[opacity:0.55]" : "[opacity:1]",
-                ]
-                  .filter(Boolean)
-                  .join(" "),
-                "hover:[background:var(--bg-3)]",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              <div>
-                <span
-                  style={{
-                    fontFamily: SANS,
-                  }}
-                  className="[font-size:13px] [font-weight:500] [color:var(--text-1)]"
-                >
-                  {k.name}
-                </span>
-                <span
-                  style={{
-                    fontFamily: MONO,
-                  }}
-                  className="[font-size:11px] [color:var(--text-4)] [margin-left:8px]"
-                >
-                  by {k.creator}
-                </span>
-              </div>
-              <div className="[display:flex] [align-items:center] [gap:4px]">
-                <span
-                  style={{
-                    fontFamily: MONO,
-                  }}
-                  className="[font-size:11px] [color:var(--text-3)]"
-                >
-                  {k.prefix}••••
-                </span>
-                {k.status === "active" && <CopyBtn value={FULL_KEYS[k.id]} />}
-              </div>
-              <Badge
-                label={k.env}
-                color={es.color}
-                bg={es.bg}
-                border={es.border}
-              />
-              <span
-                style={{
-                  fontFamily: MONO,
-                }}
-                className="[font-size:11px] [color:var(--text-4)]"
-              >
-                {k.created}
-              </span>
-              <span
-                style={{
-                  fontFamily: MONO,
-                }}
-                className="[font-size:11px] [color:var(--text-3)]"
-              >
-                {k.lastUsed}
-              </span>
-              <Badge
-                label={k.status}
-                color={k.status === "active" ? "var(--green)" : "var(--text-4)"}
-                bg={k.status === "active" ? "var(--green-bg)" : "var(--bg-3)"}
-                border={
-                  k.status === "active"
-                    ? "var(--green-border)"
-                    : "var(--border)"
-                }
-              />
-              <div className="[display:flex] [justify-content:flex-end]">
-                {k.status === "active" && (
-                  <button className="[background:none] [border:none] [cursor:pointer] [color:var(--text-4)] [display:flex] [padding:4px] hover:[color:var(--red)]">
-                    <Trash2 size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-function TeamTab() {
-  const [inviteEmail, setInviteEmail] = useState("")
-  const [inviteRole, setInviteRole] = useState("developer")
-  return (
-    <div className="[display:flex] [flex-direction:column] [gap:16px]">
-      {/* Invite */}
-      <div className="[padding:16px] [border-radius:8px] [border:1px_solid_var(--border)] [background:var(--bg-2)]">
-        <p
-          style={{
-            fontFamily: SANS,
-          }}
-          className="[font-size:13px] [font-weight:600] [color:var(--text-1)] [margin:0_0_12px]"
-        >
-          Invite member
-        </p>
-        <div className="[display:flex] [gap:8px]">
-          <input
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="colleague@company.com"
-            type="email"
-            style={{
-              ...inp,
-            }}
-            className="[flex:1]"
-          />
-          <SherlockSelect
-            value={inviteRole}
-            onChange={setInviteRole}
-            options={[
-              { value: "developer", label: "Developer" },
-              { value: "viewer", label: "Viewer" },
-              { value: "admin", label: "Admin" },
-            ]}
-            minWidth={130}
-          />
-          <ActionBtn primary>Send invite</ActionBtn>
-        </div>
-      </div>
-
-      {/* Members */}
-      <div className="overflow-x-auto max-w-full [border:1px_solid_var(--border)] [border-radius:8px] [background:var(--bg-2)]">
-        <SectionHeader title={`Members (${TEAM.length})`} />
-
-        {/* Table header */}
-        <div className="[display:grid] [grid-template-columns:200px_1fr_100px_120px_40px] [min-width:640px] [padding:0_16px] [height:36px] [border-bottom:1px_solid_var(--border)] [background:var(--bg-3)] [align-items:center] [gap:12px]">
-          {["Member", "Email", "Role", "Joined", ""].map((h) => (
-            <span
-              key={h}
-              style={{
-                fontFamily: MONO,
-              }}
-              className="[font-size:11px] [color:var(--text-4)] [font-weight:600] [letter-spacing:0.02em]"
-            >
-              {h}
-            </span>
-          ))}
-        </div>
-
-        {TEAM.map((m, i) => {
-          const rs = roleStyle(m.role)
-          return (
-            <div
-              key={m.id}
-              className={[
-                [
-                  "[display:grid] [grid-template-columns:200px_1fr_100px_120px_40px] [min-width:640px] [padding:0_16px] [height:44px] [align-items:center] [gap:12px] [transition:background_0.08s]",
-                  i < TEAM.length - 1
-                    ? "[border-bottom:1px_solid_var(--border)]"
-                    : "[border-bottom:none]",
-                ]
-                  .filter(Boolean)
-                  .join(" "),
-                "hover:[background:var(--bg-3)]",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              <div className="[display:flex] [align-items:center] [gap:10px]">
-                <div
-                  style={{
-                    fontFamily: MONO,
-                  }}
-                  className="[width:28px] [height:28px] [border-radius:50%] [font-size:10px] [font-weight:700] [background:var(--bg-3)] [border:1px_solid_var(--border-2)] [display:flex] [align-items:center] [justify-content:center] [color:var(--text-1)] [flex-shrink:0]"
-                >
-                  {m.avatar}
-                </div>
-                <span
-                  style={{
-                    fontFamily: SANS,
-                  }}
-                  className="[font-size:13px] [font-weight:500] [color:var(--text-1)]"
-                >
-                  {m.name}
-                </span>
-              </div>
-              <span
-                style={{
-                  fontFamily: MONO,
-                }}
-                className="[font-size:12px] [color:var(--text-4)] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap]"
-              >
-                {m.email}
-              </span>
-              <Badge
-                label={m.role}
-                color={rs.color}
-                bg={rs.bg}
-                border={rs.border}
-              />
-              <span
-                style={{
-                  fontFamily: MONO,
-                }}
-                className="[font-size:11px] [color:var(--text-4)]"
-              >
-                {m.joined}
-              </span>
-              <div className="[display:flex] [justify-content:flex-end]">
-                {m.role !== "owner" && (
-                  <button className="[background:none] [border:none] [cursor:pointer] [color:var(--text-4)] [display:flex] [padding:4px] hover:[color:var(--text-1)]">
-                    <MoreHorizontal size={14} />
-                  </button>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-function AlertsTab() {
-  const [alerts, setAlerts] = useState(ALERT_RULES_DEFAULT)
-  return (
-    <div className="overflow-x-auto max-w-full [border:1px_solid_var(--border)] [border-radius:8px] [background:var(--bg-2)]">
-      <SectionHeader
-        title="Alert rules"
-        action={
-          <ActionBtn primary>
-            <Plus size={12} />
-            Add rule
-          </ActionBtn>
-        }
-      />
-
-      {/* Table header */}
-      <div className="[display:grid] [grid-template-columns:1fr_120px_100px_140px_80px_40px] [min-width:640px] [padding:0_16px] [height:36px] [border-bottom:1px_solid_var(--border)] [background:var(--bg-3)] [align-items:center] [gap:12px]">
-        {["Name", "Threshold", "Severity", "Channel", "Enabled", ""].map(
-          (h) => (
-            <span
-              key={h}
-              style={{
-                fontFamily: MONO,
-              }}
-              className="[font-size:11px] [color:var(--text-4)] [font-weight:600] [letter-spacing:0.02em]"
-            >
-              {h}
-            </span>
-          ),
-        )}
-      </div>
-
-      {alerts.map((rule, i) => {
-        const ss = severityStyle(rule.severity)
-        return (
-          <div
-            key={rule.id}
-            className={[
-              [
-                "[display:grid] [grid-template-columns:1fr_120px_100px_140px_80px_40px] [min-width:640px] [padding:0_16px] [height:44px] [align-items:center] [gap:12px] [transition:background_0.08s]",
-                i < alerts.length - 1
-                  ? "[border-bottom:1px_solid_var(--border)]"
-                  : "[border-bottom:none]",
-                rule.enabled ? "[opacity:1]" : "[opacity:0.5]",
-              ]
-                .filter(Boolean)
-                .join(" "),
-              "hover:[background:var(--bg-3)]",
-            ]
-              .filter(Boolean)
-              .join(" ")}
+          <Field label="Workspace name">
+            <input
+              required
+              maxLength={100}
+              className={inputClass}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </Field>
+          <Field label="Slug" hint="Assigned by the server; not editable.">
+            <input
+              disabled
+              className={`${inputClass} font-mono`}
+              value={organization.slug}
+              readOnly
+            />
+          </Field>
+          <Field label="Timezone">
+            <input
+              required
+              className={inputClass}
+              value={timezone}
+              onChange={(event) => setTimezone(event.target.value)}
+              placeholder="America/New_York"
+            />
+          </Field>
+          <Field
+            label="Primary region"
+            hint="Data-residency preference; storage migration is not yet available."
           >
-            <span
-              style={{
-                fontFamily: SANS,
-              }}
-              className="[font-size:13px] [font-weight:500] [color:var(--text-1)]"
+            <select
+              className={inputClass}
+              value={region}
+              onChange={(event) => setRegion(event.target.value)}
             >
-              {rule.name}
-            </span>
-            <span
-              style={{
-                fontFamily: MONO,
-              }}
-              className="[font-size:11px] [color:var(--text-3)]"
-            >
-              {rule.threshold}
-            </span>
-            <Badge
-              label={rule.severity}
-              color={ss.color}
-              bg={ss.bg}
-              border={ss.border}
-            />
-            <span
-              style={{
-                fontFamily: SANS,
-              }}
-              className="[font-size:12px] [color:var(--text-3)] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap]"
-            >
-              {rule.channel}
-            </span>
-            <Toggle
-              on={rule.enabled}
-              onChange={(v) =>
-                setAlerts((prev) =>
-                  prev.map((r) =>
-                    r.id === rule.id ? { ...r, enabled: v } : r,
-                  ),
-                )
+              {["US_EAST_1", "US_WEST_2", "EU_WEST_1", "AP_SOUTHEAST_1"].map(
+                (value) => (
+                  <option key={value}>{value}</option>
+                ),
+              )}
+            </select>
+          </Field>
+          <Field label="Default environment">
+            <select
+              className={inputClass}
+              value={environment}
+              onChange={(event) =>
+                setEnvironment(event.target.value as Environment)
               }
+            >
+              {["production", "staging", "development"].map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </Field>
+          <Field
+            label="Data retention (days)"
+            hint="7–365 days. Applied when telemetry storage services are connected."
+          >
+            <input
+              type="number"
+              min={7}
+              max={365}
+              required
+              className={inputClass}
+              value={retention}
+              onChange={(event) => setRetention(Number(event.target.value))}
             />
-            <div className="[display:flex] [justify-content:flex-end]">
-              <button className="[background:none] [border:none] [cursor:pointer] [color:var(--text-4)] [display:flex] [padding:4px] hover:[color:var(--text-1)]">
-                <MoreHorizontal size={14} />
-              </button>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-function SecurityTab() {
-  const [mfa, setMfa] = useState(true)
-  const [auditLog, setAuditLog] = useState(true)
-  const [saml, setSaml] = useState(false)
-  const [sessionTimeout, setSessionTimeout] = useState("24h")
-  return (
-    <div className="[display:flex] [flex-direction:column] [gap:16px]">
-      <div className="[padding:0_20px] [border:1px_solid_var(--border)] [border-radius:8px] [background:var(--bg-2)]">
-        <FieldRow
-          label="SAML SSO"
-          hint="Single sign-on via your identity provider"
-        >
-          <div className="[display:flex] [align-items:center] [gap:10px]">
-            <Toggle on={saml} onChange={setSaml} />
-            <span
-              style={{
-                fontFamily: SANS,
-              }}
-              className={[
-                "[font-size:12px]",
-                saml ? "[color:var(--green)]" : "[color:var(--text-4)]",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              {saml
-                ? "Enabled — configure your IdP metadata below"
-                : "Disabled"}
-            </span>
-          </div>
-        </FieldRow>
-        <FieldRow
-          label="Two-factor authentication"
-          hint="Require MFA for all team members"
-        >
-          <div className="[display:flex] [align-items:center] [gap:10px]">
-            <Toggle on={mfa} onChange={setMfa} />
-            <span
-              style={{
-                fontFamily: SANS,
-              }}
-              className={[
-                "[font-size:12px]",
-                mfa ? "[color:var(--green)]" : "[color:var(--text-4)]",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              {mfa ? "Enforced for all members" : "Optional"}
-            </span>
-          </div>
-        </FieldRow>
-        <FieldRow
-          label="IP allowlist"
-          hint="Restrict access to specific IP ranges (CIDR notation)"
-        >
-          <div className="[display:flex] [flex-direction:column] [gap:6px]">
-            <input placeholder="0.0.0.0/0 (allow all)" style={inp} />
-            <p
-              style={{
-                fontFamily: SANS,
-              }}
-              className="[font-size:11px] [color:var(--text-4)] [margin:0]"
-            >
-              Leave empty to allow all IPs. Add one range per line.
-            </p>
-          </div>
-        </FieldRow>
-        <FieldRow label="Session timeout" hint="Auto-logout after inactivity">
-          <SherlockSelect
-            value={sessionTimeout}
-            onChange={setSessionTimeout}
-            options={[
-              { value: "1h", label: "1 hour" },
-              { value: "8h", label: "8 hours" },
-              { value: "24h", label: "24 hours" },
-              { value: "7d", label: "7 days" },
-            ]}
-            minWidth={140}
-          />
-        </FieldRow>
-        <FieldRow
-          label="Audit log"
-          hint="Track all admin actions — retained for 90 days"
-        >
-          <div className="[display:flex] [align-items:center] [gap:10px]">
-            <Toggle on={auditLog} onChange={setAuditLog} />
-            <span
-              style={{
-                fontFamily: SANS,
-              }}
-              className={[
-                "[font-size:12px]",
-                auditLog ? "[color:var(--green)]" : "[color:var(--text-4)]",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              {auditLog ? "Enabled — retained for 90 days" : "Disabled"}
-            </span>
-            {auditLog && (
-              <button
-                style={{
-                  fontFamily: SANS,
-                }}
-                className="[display:flex] [align-items:center] [gap:5px] [padding:5px_10px] [border-radius:7px] [border:1px_solid_var(--border)] [background:transparent] [color:var(--text-3)] [font-size:12px] [cursor:pointer] hover:[color:var(--text-1)]"
-              >
-                <Download size={11} />
-                Export CSV
-              </button>
-            )}
-          </div>
-        </FieldRow>
-        <div className="[padding:16px_0_4px]">
-          <ActionBtn primary>Save changes</ActionBtn>
-        </div>
-      </div>
-    </div>
-  )
-}
-/* ─── Page ─── */
-export default function Settings() {
-  const [activeTab, setActiveTab] = useState("general")
-  return (
-    <div
-      style={{
-        fontFamily: SANS,
-      }}
-      className="[display:flex] [flex-direction:column] [height:100%] [overflow:hidden] [background:var(--bg)]"
-    >
-      {/* Page header */}
-      <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:20px_32px_16px] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [display:flex] [align-items:center] [justify-content:space-between]">
+          </Field>
+        </fieldset>
+        <Button primary type="submit" disabled={busy || !manage}>
+          {busy ? "Saving…" : "Save changes"}
+        </Button>
+      </form>
+      <div
+        className={`${panelClass} flex flex-wrap items-center justify-between gap-3 p-5`}
+      >
         <div>
-          <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0_0_4px]">
-            Settings
-          </h1>
-          <p className="[font-size:13px] [color:var(--text-3)] [margin:0]">
-            Manage your workspace, API keys, team, and preferences
+          <h3 className="text-sm font-semibold text-[var(--text-1)]">
+            Subscription
+          </h3>
+          <p className="mt-2 font-mono text-sm text-[var(--accent)]">
+            {subscription?.plan ?? organization.plan}
+            {subscription && ` · $${subscription.priceMonthly} / month`}
+          </p>
+          <p className="mt-1 text-xs text-[var(--text-4)]">
+            {subscription?.status ??
+              "Only workspace admins can view billing details."}
           </p>
         </div>
+        <Button
+          disabled
+          title="A billing provider integration has not been implemented."
+        >
+          Billing unavailable
+        </Button>
       </div>
+      {role === "OWNER" && (
+        <div className="rounded-xl border border-[var(--red-border)] bg-[var(--red-bg)] p-5">
+          <h3 className="text-sm font-semibold text-[var(--red)]">
+            Danger zone
+          </h3>
+          <p className="mb-4 mt-2 text-xs text-[var(--text-3)]">
+            Delete this workspace, its projects, teams, and API keys. Account
+            records remain in the auth service.
+          </p>
+          <Button
+            danger
+            onClick={() => {
+              setConfirmation("")
+              setError("")
+              setDeleting(true)
+            }}
+          >
+            Delete workspace
+          </Button>
+        </div>
+      )}
+      <FormDialog
+        open={deleting}
+        onOpenChange={(value) => {
+          if (!busy) setDeleting(value)
+        }}
+        title="Delete workspace"
+        description={`This cannot be undone. Type ${organization.name} to confirm.`}
+      >
+        <Field label="Workspace name confirmation">
+          <input
+            className={inputClass}
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+          />
+        </Field>
+        <Notice message={error} />
+        <Button
+          danger
+          disabled={busy || confirmation !== organization.name}
+          onClick={() => void remove()}
+        >
+          {busy ? "Deleting…" : "Permanently delete workspace"}
+        </Button>
+      </FormDialog>
+    </div>
+  )
+}
 
-      {/* Two-column: left nav + right content */}
-      <div className="[flex:1] [display:flex] [overflow:hidden] [min-height:0]">
-        {/* Left nav (200px fixed) */}
-        <nav className="w-[200px] max-[640px]:w-full max-[640px]:flex-row max-[640px]:overflow-x-auto max-[640px]:overflow-y-hidden max-[640px]:border-r-0 max-[640px]:border-b max-[640px]:border-[var(--border)] max-[640px]:p-2 max-[640px]:[&_button]:min-w-max [width:200px] [flex-shrink:0] [border-right:1px_solid_var(--border)] [padding:16px_12px] [display:flex] [flex-direction:column] [gap:2px] [overflow-y:auto]">
-          {NAV_TABS.map((t) => {
-            const active = activeTab === t.id
-            const Icon = t.icon
-            return (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                style={{
-                  fontFamily: SANS,
-                }}
-                onMouseEnter={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.color = "var(--text-2)"
-                    e.currentTarget.style.background = "var(--bg-2)"
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.color = "var(--text-3)"
-                    e.currentTarget.style.background = "transparent"
-                  }
-                }}
-                className={[
-                  "[display:flex] [align-items:center] [gap:9px] [padding:8px_12px] [border-radius:7px] [cursor:pointer] [width:100%] [text-align:left] [font-size:13px] [letter-spacing:-0.004em] [transition:all_0.1s]",
-                  active
-                    ? "[background:var(--bg-2)]"
-                    : "[background:transparent]",
-                  active ? "[color:var(--text-1)]" : "[color:var(--text-3)]",
-                  active ? "[font-weight:500]" : "[font-weight:400]",
-                  active
-                    ? "[border:1px_solid_var(--border)]"
-                    : "[border:1px_solid_transparent]",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
+function KeysTab() {
+  const projects = useResource(useCallback(() => projectsApi.list(), []))
+  if (projects.loading) return <Loading />
+  if (!projects.data)
+    return (
+      <div className="space-y-3">
+        <Notice message={projects.error} />
+        <Button onClick={() => void projects.reload()}>Retry</Button>
+      </div>
+    )
+  return <ApiKeysPanel projects={projects.data} />
+}
+
+function TeamTab() {
+  const resource = useResource(useCallback(() => workspaceApi.team(), []))
+  const user = useAuthStore((state) => state.user)
+  const manages = user?.role === "OWNER" || user?.role === "ADMIN"
+  const [email, setEmail] = useState("")
+  const [role, setRole] = useState<Role>("DEVELOPER")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [removing, setRemoving] = useState<TeamMember | null>(null)
+  async function invite(event: FormEvent) {
+    event.preventDefault()
+    setBusy(true)
+    setError("")
+    setSuccess("")
+    try {
+      await workspaceApi.invite(email.trim(), role)
+      setEmail("")
+      setSuccess("Invitation sent. The link expires in seven days.")
+    } catch (failure) {
+      setError(authErrorMessage(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function update(member: TeamMember, nextRole: Role) {
+    setBusy(true)
+    setError("")
+    setSuccess("")
+    try {
+      await workspaceApi.changeRole(member.id, nextRole)
+      setSuccess("Role updated. The member must sign in again.")
+      await resource.reload()
+    } catch (failure) {
+      setError(authErrorMessage(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function remove() {
+    if (!removing) return
+    setBusy(true)
+    setError("")
+    try {
+      await workspaceApi.removeMember(removing.id)
+      setRemoving(null)
+      setSuccess("Member removed and their auth sessions revoked.")
+      await resource.reload()
+    } catch (failure) {
+      setError(authErrorMessage(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="space-y-5">
+      <Notice message={error || resource.error} />
+      <Notice message={success} success />
+      {manages && (
+        <form onSubmit={invite} className={`${panelClass} p-5`}>
+          <h3 className="mb-4 text-sm font-semibold text-[var(--text-1)]">
+            Invite a teammate
+          </h3>
+          <fieldset disabled={busy} className="flex flex-wrap items-end gap-3">
+            <div className="min-w-48 flex-1">
+              <Field label="Email address">
+                <input
+                  required
+                  type="email"
+                  maxLength={254}
+                  className={inputClass}
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="teammate@company.com"
+                />
+              </Field>
+            </div>
+            <Field label="Role">
+              <select
+                className={inputClass}
+                value={role}
+                onChange={(event) => setRole(event.target.value as Role)}
               >
-                <Icon size={14} />
-                {t.label}
-              </button>
+                {(user?.role === "OWNER"
+                  ? ["ADMIN", "DEVELOPER", "VIEWER"]
+                  : ["DEVELOPER", "VIEWER"]
+                ).map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
+            </Field>
+            <Button type="submit" primary disabled={busy}>
+              {busy ? "Sending…" : "Send invite"}
+            </Button>
+          </fieldset>
+          <p className="mt-3 text-xs text-[var(--text-4)]">
+            Invitations require SMTP configuration. The API reports delivery
+            failures.
+          </p>
+        </form>
+      )}
+      {resource.loading ? (
+        <Loading />
+      ) : (
+        <div className={panelClass}>
+          {resource.data?.map((member) => {
+            const editable =
+              manages &&
+              member.userId !== user?.id &&
+              member.role !== "OWNER" &&
+              (user?.role === "OWNER" || member.role !== "ADMIN")
+            return (
+              <div
+                key={member.id}
+                className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] p-4 last:border-0"
+              >
+                <div className="flex size-8 items-center justify-center rounded-full bg-[var(--bg-3)] text-xs text-[var(--text-2)]">
+                  {member.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-40 flex-1">
+                  <p className="text-sm font-medium text-[var(--text-1)]">
+                    {member.name}
+                    {member.userId === user?.id && (
+                      <span className="ml-2 text-xs text-[var(--text-4)]">
+                        you
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--text-4)]">
+                    {member.email}
+                  </p>
+                </div>
+                {editable ? (
+                  <>
+                    <select
+                      aria-label={`Role for ${member.name}`}
+                      disabled={busy}
+                      value={member.role}
+                      className={`${inputClass} !w-auto font-mono text-xs`}
+                      onChange={(event) =>
+                        void update(member, event.target.value as Role)
+                      }
+                    >
+                      {(user?.role === "OWNER"
+                        ? ["ADMIN", "DEVELOPER", "VIEWER"]
+                        : ["DEVELOPER", "VIEWER"]
+                      ).map((value) => (
+                        <option key={value}>{value}</option>
+                      ))}
+                    </select>
+                    <Button
+                      danger
+                      aria-label={`Remove ${member.name}`}
+                      disabled={busy}
+                      onClick={() => {
+                        setError("")
+                        setRemoving(member)
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  </>
+                ) : (
+                  <span className="font-mono text-xs text-[var(--text-3)]">
+                    {member.role}
+                  </span>
+                )}
+              </div>
             )
           })}
-        </nav>
+        </div>
+      )}
+      {resource.error && (
+        <Button onClick={() => void resource.reload()}>Retry</Button>
+      )}
+      <FormDialog
+        open={!!removing}
+        onOpenChange={(value) => {
+          if (!busy && !value) setRemoving(null)
+        }}
+        title="Remove team member"
+        description={`Remove ${removing?.name ?? "this member"} from the workspace and revoke their sessions.`}
+      >
+        <Notice message={error} />
+        <Button danger disabled={busy} onClick={() => void remove()}>
+          Confirm removal
+        </Button>
+      </FormDialog>
+    </div>
+  )
+}
 
-        {/* Right scrollable content */}
-        <div className="max-[640px]:px-4 [flex:1] [overflow-y:auto] [padding:24px_32px]">
-          {activeTab === "general" && <GeneralTab />}
-          {activeTab === "apikeys" && <ApiKeysTab />}
-          {activeTab === "team" && <TeamTab />}
-          {activeTab === "alerts" && <AlertsTab />}
-          {activeTab === "security" && <SecurityTab />}
+function SecurityTab() {
+  const resource = useResource(useCallback(() => workspaceApi.security(), []))
+  const role = useAuthStore((state) => state.user?.role)
+  const [settings, setSettings] = useState<SecuritySettings | null>(null)
+  const [allowlist, setAllowlist] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  useEffect(() => {
+    if (resource.data) {
+      setSettings(resource.data)
+      setAllowlist(resource.data.ipAllowlist.join("\n"))
+    }
+  }, [resource.data])
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    if (!settings) return
+    setBusy(true)
+    setError("")
+    setSuccess("")
+    try {
+      await workspaceApi.updateSecurity({
+        samlSsoEnabled: settings.samlSsoEnabled,
+        samlIdpMetadataUrl: settings.samlIdpMetadataUrl,
+        mfaEnforced: settings.mfaEnforced,
+        ipAllowlist: allowlist
+          .split(/\n/)
+          .map((value) => value.trim())
+          .filter(Boolean),
+        sessionTimeout: settings.sessionTimeout,
+        auditLogEnabled: settings.auditLogEnabled,
+      })
+      setSuccess("Security settings saved.")
+      await resource.reload()
+    } catch (failure) {
+      setError(authErrorMessage(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (resource.loading) return <Loading />
+  if (!settings)
+    return (
+      <div className="space-y-3">
+        <Notice message={resource.error} />
+        <Button onClick={() => void resource.reload()}>Retry</Button>
+      </div>
+    )
+  return (
+    <div className="space-y-5">
+      <Notice message={error || resource.error} />
+      <Notice message={success} success />
+      <form onSubmit={save} className={`${panelClass} space-y-5 p-5`}>
+        <fieldset disabled={busy || role !== "OWNER"} className="space-y-5">
+          <Field label="SAML SSO">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                aria-label="Enable SAML SSO"
+                disabled
+                checked={settings.samlSsoEnabled}
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    samlSsoEnabled: event.target.checked,
+                  })
+                }
+              />
+              <span className="text-xs text-[var(--text-3)]">
+                Requires an identity-provider integration; not yet configured.
+              </span>
+            </div>
+          </Field>
+          <Field label="Identity provider metadata URL">
+            <input
+              type="url"
+              disabled
+              className={inputClass}
+              value={settings.samlIdpMetadataUrl ?? ""}
+              onChange={(event) =>
+                setSettings({
+                  ...settings,
+                  samlIdpMetadataUrl: event.target.value,
+                })
+              }
+              placeholder="https://idp.example.com/metadata"
+            />
+          </Field>
+          <Field label="Require MFA enrollment">
+            <input
+              type="checkbox"
+              checked={settings.mfaEnforced}
+              onChange={(event) =>
+                setSettings({ ...settings, mfaEnforced: event.target.checked })
+              }
+            />
+          </Field>
+          <Field
+            label="IP allowlist"
+            hint="One CIDR per line. Leave empty for all IPs. The backend uses the trusted gateway peer IP."
+          >
+            <textarea
+              className={`${inputClass} min-h-24 font-mono text-xs`}
+              value={allowlist}
+              onChange={(event) => setAllowlist(event.target.value)}
+              placeholder="192.0.2.0/24"
+            />
+          </Field>
+          <Field label="Session timeout">
+            <select
+              className={inputClass}
+              value={settings.sessionTimeout}
+              onChange={(event) =>
+                setSettings({
+                  ...settings,
+                  sessionTimeout: event.target
+                    .value as SecuritySettings["sessionTimeout"],
+                })
+              }
+            >
+              {[
+                ["H1", "1 hour"],
+                ["H8", "8 hours"],
+                ["H24", "24 hours"],
+                ["D7", "7 days"],
+              ].map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Workspace audit logging">
+            <input
+              type="checkbox"
+              checked={settings.auditLogEnabled}
+              onChange={(event) =>
+                setSettings({
+                  ...settings,
+                  auditLogEnabled: event.target.checked,
+                })
+              }
+            />
+          </Field>
+        </fieldset>
+        <Button primary type="submit" disabled={busy || role !== "OWNER"}>
+          {busy ? "Saving…" : "Save security settings"}
+        </Button>
+      </form>
+      <Button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true)
+          setError("")
+          try {
+            const blob = await workspaceApi.auditExport()
+            const url = URL.createObjectURL(blob)
+            const anchor = document.createElement("a")
+            anchor.href = url
+            anchor.download = "sherlock-workspace-audit.csv"
+            anchor.click()
+            setTimeout(() => URL.revokeObjectURL(url), 1000)
+          } catch (failure) {
+            setError(authErrorMessage(failure))
+          } finally {
+            setBusy(false)
+          }
+        }}
+      >
+        <Download size={14} />
+        Export workspace audit (90 days)
+      </Button>
+      <p className="text-xs text-[var(--text-4)]">
+        These workspace policies currently protect project-service APIs. Auth
+        audit events are stored separately.
+      </p>
+    </div>
+  )
+}
+
+function AccountTab() {
+  const resource = useResource(
+    useCallback(
+      async () => ({
+        user: await authApi.me(),
+        sessions: await authApi.sessions(),
+      }),
+      [],
+    ),
+  )
+  const [setup, setSetup] = useState<{
+    secret: string
+    otpAuthUrl: string
+  } | null>(null)
+  const [code, setCode] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [busy, setBusy] = useState(false)
+  const navigate = useNavigate()
+  async function action(operation: () => Promise<unknown>, message: string) {
+    setBusy(true)
+    setError("")
+    setSuccess("")
+    try {
+      await operation()
+      setSuccess(message)
+      if (useAuthStore.getState().isAuthenticated) await resource.reload()
+    } catch (failure) {
+      setError(authErrorMessage(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (resource.loading) return <Loading />
+  return (
+    <div className="space-y-5">
+      <Notice message={error || resource.error} />
+      <Notice message={success} success />
+      {resource.error && (
+        <Button onClick={() => void resource.reload()}>Retry</Button>
+      )}
+      <div className={`${panelClass} space-y-4 p-5`}>
+        <h3 className="text-sm font-semibold text-[var(--text-1)]">
+          Your account
+        </h3>
+        <p className="text-sm text-[var(--text-3)]">
+          {resource.data?.user.name} · {resource.data?.user.email}
+        </p>
+        <p className="font-mono text-xs text-[var(--text-4)]">
+          {resource.data?.user.role} · MFA{" "}
+          {resource.data?.user.mfaEnabled ? "enabled" : "disabled"}
+        </p>
+        {!resource.data?.user.mfaEnabled && !setup && (
+          <Button
+            disabled={busy}
+            onClick={() =>
+              void action(
+                async () => setSetup(await authApi.enableMfa()),
+                "Add the secret to your authenticator, then verify a code.",
+              )
+            }
+          >
+            Set up MFA
+          </Button>
+        )}
+        {setup && (
+          <div className="space-y-3">
+            <p className="text-xs text-[var(--text-3)]">
+              Enter this secret in your authenticator app. Keep it private.
+            </p>
+            <code className="block break-all rounded-lg bg-[var(--bg)] p-3 text-xs text-[var(--text-1)]">
+              {setup.secret}
+            </code>
+          </div>
+        )}
+        {(setup || resource.data?.user.mfaEnabled) && (
+          <div className="space-y-3">
+            <Field label="Authenticator code">
+              <input
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                maxLength={6}
+                pattern="[0-9]{6}"
+                className={inputClass}
+                value={code}
+                onChange={(event) =>
+                  setCode(event.target.value.replace(/\D/g, ""))
+                }
+              />
+            </Field>
+            {setup ? (
+              <Button
+                disabled={busy || code.length !== 6}
+                onClick={() =>
+                  void action(async () => {
+                    await authApi.verifyMfa(code)
+                    setSetup(null)
+                    setCode("")
+                  }, "MFA enabled.")
+                }
+              >
+                Verify and enable MFA
+              </Button>
+            ) : (
+              <>
+                <Field label="Password to disable MFA">
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    className={inputClass}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </Field>
+                <Button
+                  danger
+                  disabled={busy || code.length !== 6 || !password}
+                  onClick={() =>
+                    void action(async () => {
+                      await authApi.disableMfa(password, code)
+                      useAuthStore.getState().logout()
+                      navigate("/login", { replace: true })
+                    }, "MFA disabled. Sign in again.")
+                  }
+                >
+                  Disable MFA and sign out
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      <div className={panelClass}>
+        <h3 className="border-b border-[var(--border)] p-4 text-sm font-semibold text-[var(--text-1)]">
+          Active sessions
+        </h3>
+        {resource.data?.sessions.map((session) => (
+          <div
+            key={session.id}
+            className="flex items-center justify-between gap-3 border-b border-[var(--border)] p-4 last:border-0"
+          >
+            <div>
+              <p className="text-sm text-[var(--text-2)]">
+                {session.deviceInfo || "Unknown device"}
+                {session.current ? " · Current session" : ""}
+              </p>
+              <p className="mt-1 text-xs text-[var(--text-4)]">
+                {session.ipAddress} ·{" "}
+                {new Date(session.createdAt).toLocaleString()}
+              </p>
+            </div>
+            <Button
+              danger
+              disabled={busy}
+              onClick={() =>
+                void action(async () => {
+                  await authApi.revokeSession(session.id)
+                  if (session.current) {
+                    useAuthStore.getState().logout()
+                    navigate("/login", { replace: true })
+                  }
+                }, "Session revoked.")
+              }
+            >
+              Revoke
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true)
+          setError("")
+          try {
+            await authApi.logout(useAuthStore.getState().refreshToken)
+            useAuthStore.getState().logout()
+            navigate("/login", { replace: true })
+          } catch (failure) {
+            setError(authErrorMessage(failure))
+          } finally {
+            setBusy(false)
+          }
+        }}
+      >
+        <LogOut size={14} />
+        Sign out
+      </Button>
+    </div>
+  )
+}
+
+const tabs = [
+  { id: "general", label: "General", icon: Globe },
+  { id: "apikeys", label: "API Keys", icon: KeyRound },
+  { id: "team", label: "Team", icon: Users },
+  { id: "security", label: "Security", icon: Shield },
+  { id: "account", label: "Account", icon: UserRound },
+  { id: "alerts", label: "Alerts", icon: Bell },
+]
+
+export default function Settings() {
+  const [params, setParams] = useSearchParams()
+  const tab = tabs.some((item) => item.id === params.get("tab"))
+    ? params.get("tab")
+    : "general"
+  return (
+    <div className="app-page flex h-full min-h-[600px] flex-col text-[var(--text-1)]">
+      <PageHeading
+        as="header"
+        className="page-header-region border-b border-[var(--border)] px-5 py-4"
+      >
+        <>
+          <h1 className="page-title text-lg font-semibold">Settings</h1>
+
+          <p className="mt-1 text-sm text-[var(--text-3)]">
+            Manage your workspace, API keys, team, and security.
+          </p>
+        </>
+      </PageHeading>
+      <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+        <nav
+          aria-label="Settings sections"
+          className="flex shrink-0 gap-1 overflow-auto border-b border-[var(--border)] p-3 sm:w-48 sm:flex-col sm:border-b-0 sm:border-r"
+        >
+          {tabs.map((item) => (
+            <button
+              key={item.id}
+              aria-current={item.id === tab ? "page" : undefined}
+              onClick={() => setParams({ tab: item.id })}
+              className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-left text-sm ${
+                item.id === tab
+                  ? "border-[var(--border)] bg-[var(--bg-2)] font-medium text-[var(--text-1)]"
+                  : "border-transparent text-[var(--text-3)] hover:bg-[var(--bg-2)]"
+              }`}
+            >
+              <item.icon size={14} />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        <div className="min-w-0 flex-1 overflow-y-auto p-5 sm:p-8">
+          <div className="max-w-5xl">
+            {tab === "general" && <GeneralTab />}
+            {tab === "apikeys" && <KeysTab />}
+            {tab === "team" && <TeamTab />}
+            {tab === "security" && <SecurityTab />}
+            {tab === "account" && <AccountTab />}
+            {tab === "alerts" && (
+              <div className={`${panelClass} p-4`}>
+                <h2 className="text-sm font-semibold">Alert preferences</h2>
+                <p className="mt-2 text-sm text-[var(--text-3)]">
+                  Alert-rule persistence requires the alert-service, which is
+                  not part of the three running services. No demo changes are
+                  saved as real rules.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

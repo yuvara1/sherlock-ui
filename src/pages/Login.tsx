@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react"
-import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { useState, useEffect, useRef, useCallback, useId } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import {
   Eye,
@@ -13,8 +13,14 @@ import {
 } from "lucide-react"
 import { loginSchema } from "@/schemas/auth"
 import { useAuthStore } from "@/stores/authStore"
+import axios from "axios"
+import { authApi, authErrorMessage, type LoginResponse } from "@/api/auth"
+import { UI_PREVIEW_ACCESS_TOKEN } from "@/api/client"
 import { NavbarLogo } from "@/components/ui/resizable-navbar"
-import type { User } from "@/types"
+
+const UI_PREVIEW_ENABLED =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_UI_PREVIEW === "true"
+
 // ── Input field ─────────────────────────────────────────────────────────────
 function Field({
   label,
@@ -40,16 +46,23 @@ function Field({
   extra?: React.ReactNode
 }) {
   const [focused, setFocused] = useState(false)
+  const fieldId = useId()
   return (
     <div className="[display:flex] [flex-direction:column] [gap:6px]">
       <div className="[display:flex] [align-items:center] [justify-content:space-between]">
-        <label className="[font-size:13px] [font-weight:500] [color:rgba(255,255,255,0.75)] [letter-spacing:-0.002em]">
+        <label
+          htmlFor={fieldId}
+          className="[font-size:13px] [font-weight:500] [color:rgba(255,255,255,0.75)] [letter-spacing:-0.002em]"
+        >
           {label}
         </label>
         {extra}
       </div>
       <div className="[position:relative]">
         <input
+          id={fieldId}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${fieldId}-error` : undefined}
           type={type}
           value={value}
           placeholder={placeholder}
@@ -85,6 +98,8 @@ function Field({
       <AnimatePresence>
         {error && (
           <motion.p
+            id={`${fieldId}-error`}
+            role="alert"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
@@ -147,6 +162,8 @@ function MfaInput({
             refs.current[i] = el
           }}
           type="text"
+          aria-label={`Verification code digit ${i + 1}`}
+          autoComplete={i === 0 ? "one-time-code" : "off"}
           inputMode="numeric"
           maxLength={1}
           value={digits[i] || ""}
@@ -182,20 +199,21 @@ function LockoutBanner({
 }) {
   const [remaining, setRemaining] = useState(seconds)
   useEffect(() => {
-    const id = setInterval(
-      () =>
-        setRemaining((r) => {
-          if (r <= 1) {
-            clearInterval(id)
-            onExpire()
-            return 0
-          }
-          return r - 1
-        }),
-      1000,
-    )
-    return () => clearInterval(id)
-  }, [])
+    const deadline = Date.now() + seconds * 1000
+    setRemaining(seconds)
+    const interval = setInterval(() => {
+      const remainingSeconds = Math.max(
+        0,
+        Math.ceil((deadline - Date.now()) / 1000),
+      )
+      setRemaining(remainingSeconds)
+      if (remainingSeconds === 0) {
+        clearInterval(interval)
+        onExpire()
+      }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [seconds, onExpire])
   const mins = Math.floor(remaining / 60),
     secs = remaining % 60
   return (
@@ -277,6 +295,7 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false)
   const [remember, setRemember] = useState(savedRemember)
   const [mfaCode, setMfaCode] = useState("")
+  const [mfaToken, setMfaToken] = useState("")
   const [step, setStep] = useState<Step>("credentials")
   const [errors, setErrors] =
     useState<Partial<Record<"email" | "password" | "mfaCode", string>>>({})
@@ -284,6 +303,7 @@ export default function Login() {
   const [globalError, setGlobalError] = useState("")
   const [loading, setLoading] = useState(false)
   const [lockSeconds, setLockSeconds] = useState(0)
+  const handleLockoutExpire = useCallback(() => setLockSeconds(0), [])
   useEffect(() => {
     if (isLocked()) setLockSeconds(lockoutSecondsRemaining())
   }, [])
@@ -327,38 +347,76 @@ export default function Login() {
     }
     setLoading(true)
     setGlobalError("")
-    await new Promise((r) => setTimeout(r, 900))
-    if (password !== "Demo1234!" && email !== "demo@sherlock.dev") {
-      const { locked } = recordFailedAttempt()
-      setLoading(false)
-      if (locked) {
-        setLockSeconds(lockoutSecondsRemaining())
-      } else {
-        setGlobalError("Incorrect email or password.")
+    try {
+      const res = await authApi.login({
+        email: email.trim().toLowerCase(),
+        password,
+      })
+      if (res.mfaPending && res.mfaToken) {
+        setMfaToken(res.mfaToken)
+        setLoading(false)
+        setStep("mfa")
+        return
       }
-      return
-    }
-    if (email === "demo@sherlock.dev" || remember === false) {
+      completeLogin(res)
+    } catch (err) {
       setLoading(false)
-      setStep("mfa")
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined
+      if (status === 401) {
+        const { locked } = recordFailedAttempt()
+        if (locked) {
+          setLockSeconds(lockoutSecondsRemaining())
+          return
+        }
+      }
+      setGlobalError(authErrorMessage(err, "Incorrect email or password."))
+    }
+  }
+  const completeLogin = (
+    res: LoginResponse,
+    fallbackDestination = "/app/projects",
+  ) => {
+    if (!res.user || !res.tokens) {
+      setLoading(false)
+      setGlobalError("Unexpected response from the auth service.")
       return
     }
     resetAttempts()
-    const mockUser: User = {
-      id: "usr-1",
-      email,
-      name: "Demo User",
-      role: "OWNER",
-      createdAt: new Date().toISOString(),
-    }
-    login(
-      mockUser,
-      { accessToken: "mock_at", refreshToken: "mock_rt" },
-      remember,
-    )
+    login(res.user, res.tokens, remember)
     setLoading(false)
     setStep("success")
-    setTimeout(() => navigate("/app/overview"), 900)
+    const returnTo = params.get("returnTo")
+    const destination =
+      returnTo &&
+      returnTo.startsWith("/") &&
+      !returnTo.startsWith("//") &&
+      !returnTo.includes("\\")
+        ? returnTo
+        : fallbackDestination
+    setTimeout(() => navigate(destination, { replace: true }), 900)
+  }
+  const startUiPreview = () => {
+    completeLogin(
+      {
+        user: {
+          id: "00000000-0000-4000-8000-000000000001",
+          email: "preview@sherlock.dev",
+          name: "UI Preview",
+          role: "OWNER",
+          organizationId: "00000000-0000-4000-8000-000000000002",
+          mfaEnabled: false,
+          createdAt: new Date().toISOString(),
+        },
+        tokens: {
+          accessToken: UI_PREVIEW_ACCESS_TOKEN,
+          refreshToken: UI_PREVIEW_ACCESS_TOKEN,
+          expiresIn: 86_400,
+        },
+        mfaPending: false,
+        mfaToken: null,
+      },
+      "/app/overview",
+    )
   }
   const submitMfa = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -367,27 +425,20 @@ export default function Login() {
       return
     }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 700))
-    resetAttempts()
-    const mockUser: User = {
-      id: "usr-1",
-      email,
-      name: "Demo User",
-      role: "OWNER",
-      createdAt: new Date().toISOString(),
+    setErrors({})
+    try {
+      completeLogin(await authApi.loginMfa(mfaToken, mfaCode))
+    } catch (err) {
+      setLoading(false)
+      setMfaCode("")
+      setErrors({
+        mfaCode: authErrorMessage(err, "Invalid verification code."),
+      })
     }
-    login(
-      mockUser,
-      { accessToken: "mock_at", refreshToken: "mock_rt" },
-      remember,
-    )
-    setLoading(false)
-    setStep("success")
-    setTimeout(() => navigate("/app/overview"), 900)
   }
   const locked = lockSeconds > 0
   return (
-    <div className="[min-height:100vh] [background:#000] [display:flex] [flex-direction:column] [align-items:center] [justify-content:center] [font-family:Geist,_sans-serif] [padding:40px_20px]">
+    <div className="public-surface auth-surface dark [min-height:100vh] [background:#000] [display:flex] [flex-direction:column] [align-items:center] [justify-content:center] [font-family:Geist,_sans-serif] [padding:40px_20px]">
       <div className="[width:100%] [max-width:360px]">
         <AnimatePresence mode="wait">
           {/* ── Credentials step ── */}
@@ -449,7 +500,7 @@ export default function Login() {
                   <div className="[margin-bottom:16px]">
                     <LockoutBanner
                       seconds={lockSeconds}
-                      onExpire={() => setLockSeconds(0)}
+                      onExpire={handleLockoutExpire}
                     />
                   </div>
                 )}
@@ -558,6 +609,17 @@ export default function Login() {
                 </button>
               </form>
 
+              {UI_PREVIEW_ENABLED && (
+                <button
+                  type="button"
+                  onClick={startUiPreview}
+                  className="[margin-top:10px] [width:100%] [padding:12px] [border-radius:10px] [border:1px_solid_rgba(255,255,255,0.12)] [cursor:pointer] [background:rgba(255,255,255,0.05)] [color:rgba(255,255,255,0.8)] [font-size:14px] [font-weight:600] [font-family:Geist,_sans-serif] [display:flex] [align-items:center] [justify-content:center] [gap:8px] [transition:background_0.15s,color_0.15s] hover:[background:rgba(255,255,255,0.1)] hover:[color:#fff]"
+                >
+                  Continue in UI preview
+                  <ArrowRight size={14} />
+                </button>
+              )}
+
               {/* OR divider */}
               <div className="[display:flex] [align-items:center] [gap:10px] [margin:20px_0]">
                 <div className="[flex:1] [border-top:1px_dashed_rgba(255,255,255,0.15)]" />
@@ -607,12 +669,40 @@ export default function Login() {
               <p className="[text-align:center] [margin-top:24px] [font-size:14px] [color:rgba(255,255,255,0.35)] [letter-spacing:-0.002em]">
                 {"Don't have an account?"}{" "}
                 <Link
-                  to="/register"
+                  to={`/register${
+                    params.get("returnTo")
+                      ? `?returnTo=${encodeURIComponent(params.get("returnTo")!)}`
+                      : ""
+                  }`}
                   className="[color:#fff] [font-weight:700] [text-decoration:none]"
                 >
                   Sign up
                 </Link>
               </p>
+
+              <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.03] p-3 font-mono text-[11px] text-white/45">
+                <p className="mb-2 font-sans text-[11px] uppercase tracking-[0.08em] text-white/30">
+                  Demo accounts
+                </p>
+                {[
+                  ["admin@sherlock.dev", "Sherlock@Owner123"],
+                  ["demo@sherlock.dev", "Sherlock@Guest123"],
+                  ["mfa@sherlock.dev", "Sherlock@Mfa1234"],
+                ].map(([e, p]) => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => {
+                      setEmail(e)
+                      setPassword(p)
+                    }}
+                    className="flex w-full justify-between gap-3 rounded px-1.5 py-1 text-left hover:bg-white/5 hover:text-white/80"
+                  >
+                    <span>{e}</span>
+                    <span>{p}</span>
+                  </button>
+                ))}
+              </div>
             </motion.div>
           )}
 
@@ -636,13 +726,14 @@ export default function Login() {
                   Two-factor authentication
                 </h2>
                 <p className="[font-size:13px] [color:rgba(255,255,255,0.4)] [line-height:1.6] [margin-bottom:6px]">
-                  Enter the 6-digit code sent to{" "}
+                  Enter the 6-digit code from your authenticator app for{" "}
                   <strong className="[color:rgba(255,255,255,0.65)]">
                     {email}
                   </strong>
                 </p>
                 <p className="[font-size:12px] [color:rgba(255,255,255,0.25)] [margin-bottom:28px]">
-                  For demo: enter any 6 digits
+                  Demo account mfa@sherlock.dev uses TOTP secret
+                  JBSWY3DPEHPK3PXP
                 </p>
                 <form
                   onSubmit={submitMfa}

@@ -1,3 +1,4 @@
+import PageHeading from "@/components/workspace/PageHeading"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Editor from "@monaco-editor/react"
 import {
@@ -352,7 +353,11 @@ function sanitizeReq(r: ReqState): ReqState {
   }
 }
 /* ─── Atoms ─── */
-function MethodTag({ method, size = 10 }: { method: string size?: number }) {
+interface MethodTagProps {
+  method: string
+  size?: number
+}
+function MethodTag({ method, size = 10 }: MethodTagProps) {
   return (
     <span
       style={{
@@ -408,7 +413,11 @@ function IconBtn({
     </button>
   )
 }
-function CopyBtn({ value, label = "Copy" }: { value: string label?: string }) {
+interface CopyButtonProps {
+  value: string
+  label?: string
+}
+function CopyBtn({ value, label = "Copy" }: CopyButtonProps) {
   const [copied, setCopied] = useState(false)
   return (
     <button
@@ -1101,12 +1110,43 @@ export default function ApiDebugger() {
       style={{
         fontFamily: SANS,
       }}
-      className="[display:flex] [flex-direction:column] [height:100%] [overflow:hidden] [background:var(--bg)]"
+      className="app-page [display:flex] [flex-direction:column] [height:100%] [overflow:hidden] [background:var(--bg)]"
     >
       {/* Page header */}
-      <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:18px_32px_14px] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [display:flex] [align-items:center] [justify-content:space-between] [gap:12px] [flex-wrap:wrap]">
+      <PageHeading
+        className="page-heading-row max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:18px_32px_14px] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [display:flex] [align-items:center] [justify-content:space-between] [gap:12px] [flex-wrap:wrap]"
+        actions={
+          <>
+            <div className="[display:flex] [align-items:center] [gap:8px] [flex-wrap:wrap]">
+              <div className="[display:flex] [align-items:center] [gap:6px]">
+                <Globe size={13} className="[color:var(--text-4)]" />
+                <SherlockSelect
+                  value={activeEnvId}
+                  onChange={setActiveEnvId}
+                  options={envs.map((e) => ({ value: e.id, label: e.name }))}
+                  minWidth={150}
+                  align="end"
+                />
+              </div>
+              <IconBtn
+                onClick={() => setEnvModalOpen(true)}
+                title="Manage environments"
+              >
+                Environments
+              </IconBtn>
+              <IconBtn
+                onClick={() => setCurlModalOpen(true)}
+                title="Import from cURL"
+              >
+                <Download size={12} />
+                Import
+              </IconBtn>
+            </div>
+          </>
+        }
+      >
         <div>
-          <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0_0_3px]">
+          <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0_0_3px]">
             API Debugger
           </h1>
           <p className="[font-size:13px] [color:var(--text-3)] [margin:0]">
@@ -1114,32 +1154,7 @@ export default function ApiDebugger() {
             environments
           </p>
         </div>
-        <div className="[display:flex] [align-items:center] [gap:8px] [flex-wrap:wrap]">
-          <div className="[display:flex] [align-items:center] [gap:6px]">
-            <Globe size={13} className="[color:var(--text-4)]" />
-            <SherlockSelect
-              value={activeEnvId}
-              onChange={setActiveEnvId}
-              options={envs.map((e) => ({ value: e.id, label: e.name }))}
-              minWidth={150}
-              align="end"
-            />
-          </div>
-          <IconBtn
-            onClick={() => setEnvModalOpen(true)}
-            title="Manage environments"
-          >
-            Environments
-          </IconBtn>
-          <IconBtn
-            onClick={() => setCurlModalOpen(true)}
-            title="Import from cURL"
-          >
-            <Download size={12} />
-            Import
-          </IconBtn>
-        </div>
-      </div>
+      </PageHeading>
 
       {/* Body: sidebar + main */}
       <div className="max-[800px]:flex-col [flex:1] [display:flex] [overflow:hidden] [min-height:0]">
@@ -1170,6 +1185,7 @@ export default function ApiDebugger() {
                     className="[color:var(--text-4)] [flex-shrink:0]"
                   />
                   <input
+                    aria-label="Filter"
                     value={historyFilter}
                     onChange={(e) => setHistoryFilter(e.target.value)}
                     placeholder="Filter..."
@@ -1543,10 +1559,10 @@ export default function ApiDebugger() {
                     value={req.authType}
                     onChange={(v) => patchReq({ authType: v as AuthType })}
                     options={[
-                      { value: "none", label: "No Auth" },
-                      { value: "bearer", label: "Bearer Token" },
-                      { value: "basic", label: "Basic Auth" },
-                      { value: "apikey", label: "API Key" },
+                      { value: "none", label: "No auth" },
+                      { value: "bearer", label: "Bearer token" },
+                      { value: "basic", label: "Basic auth" },
+                      { value: "apikey", label: "API key" },
                     ]}
                     minWidth={150}
                   />
@@ -1622,8 +1638,8 @@ export default function ApiDebugger() {
                         patchReq({ apiKeyIn: v as "header" | "query" })
                       }
                       options={[
-                        { value: "header", label: "Add to Header" },
-                        { value: "query", label: "Add to Query" },
+                        { value: "header", label: "Add to header" },
+                        { value: "query", label: "Add to query" },
                       ]}
                       minWidth={150}
                     />
@@ -1645,7 +1661,7 @@ export default function ApiDebugger() {
                     options={[
                       { value: "none", label: "None" },
                       { value: "raw", label: "Raw" },
-                      { value: "form-data", label: "Form Data" },
+                      { value: "form-data", label: "Form data" },
                       { value: "urlencoded", label: "x-www-form-urlencoded" },
                       { value: "graphql", label: "GraphQL" },
                     ]}

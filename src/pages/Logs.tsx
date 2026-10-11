@@ -1,7 +1,14 @@
+import PageHeading from "@/components/workspace/PageHeading"
+import ExportButton from "@/components/workspace/ExportButton"
+import PageInsights from "@/components/workspace/PageInsights"
+import { SherlockGrid } from "@/components/ui/SherlockGrid"
+import { Button as SortButton } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { useState, useMemo } from "react"
+import { Link } from "react-router"
 import {
   Search,
-  Download,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
@@ -9,6 +16,8 @@ import {
   AlertTriangle,
   Info,
   Bug,
+  Copy,
+  ExternalLink,
 } from "lucide-react"
 import { SherlockSelect } from "@/components/ui/SherlockSelect"
 const LOGS = [
@@ -377,7 +386,10 @@ function SortableTH({
   style?: React.CSSProperties
 }) {
   return (
-    <div
+    <SortButton
+      variant="ghost"
+      size="sm"
+      aria-label={`Sort by ${label}`}
       onClick={() => onSort(col)}
       style={{
         ...style,
@@ -396,7 +408,7 @@ function SortableTH({
     >
       {label}
       <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />
-    </div>
+    </SortButton>
   )
 }
 const COL: React.CSSProperties = {
@@ -415,6 +427,29 @@ export default function Logs() {
   const [timeRange, setTimeRange] = useState("Last 1h")
   const [sortCol, setSortCol] = useState<SortCol>(null)
   const [sortDir, setSortDir] = useState<SortDir>(null)
+  const [expandedLogId, setExpandedLogId] = useState<number | null>(null)
+  const [copiedLogId, setCopiedLogId] = useState<number | null>(null)
+  async function copyLog(log: typeof LOGS[number]) {
+    try {
+      await navigator.clipboard.writeText(
+        JSON.stringify(
+          {
+            timestamp: log.ts,
+            level: log.level,
+            service: log.service,
+            message: log.message,
+            traceId: `trace_${String(log.id).padStart(8, "0")}`,
+          },
+          null,
+          2,
+        ),
+      )
+      setCopiedLogId(log.id)
+      window.setTimeout(() => setCopiedLogId(null), 1600)
+    } catch {
+      setCopiedLogId(null)
+    }
+  }
   function handleSort(col: SortCol) {
     if (sortCol !== col) {
       setSortCol(col)
@@ -477,26 +512,29 @@ export default function Logs() {
     { label: "Services", value: String(services), delta: "active" },
   ]
   return (
-    <div className="[height:100%] [display:flex] [flex-direction:column] [overflow:hidden] [font-family:Geist,_sans-serif] [font-size:13px] [color:var(--text-1)]">
+    <div className="app-page [height:100%] [display:flex] [flex-direction:column] [overflow-y:auto] [overflow-x:hidden] [font-family:Geist,_sans-serif] [font-size:13px] [color:var(--text-1)]">
       {/* Page header */}
-      <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:24px_32px_0] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [background:var(--bg)]">
-        <div className="[display:flex] [align-items:flex-start] [justify-content:space-between] [margin-bottom:20px]">
+      <div className="page-header-region max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:16px_20px_0] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [background:var(--bg)]">
+        <PageHeading
+          className="page-heading-row [display:flex] [align-items:flex-start] [justify-content:space-between] [margin-bottom:20px]"
+          actions={
+            <>
+              <ExportButton rows={sorted} name="logs" />
+            </>
+          }
+        >
           <div>
-            <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.025em] [margin:0_0_4px] [color:var(--text-1)]">
+            <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.025em] [margin:0_0_4px] [color:var(--text-1)]">
               Logs
             </h1>
             <p className="[font-size:13px] [color:var(--text-3)] [margin:0]">
               Real-time log stream from all services
             </p>
           </div>
-          <button className="[display:flex] [align-items:center] [gap:6px] [padding:0_14px] [height:32px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg)] [color:var(--text-2)] [font-size:13px] [font-family:Geist,_sans-serif] [cursor:pointer] [letter-spacing:-0.01em]">
-            <Download size={13} />
-            Export
-          </button>
-        </div>
+        </PageHeading>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 min-[641px]:grid-cols-4 min-[1201px]:grid-cols-8 gap-3 [display:grid] [grid-template-columns:repeat(4,_1fr)] [gap:12px] [margin-bottom:20px]">
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {stats.map((s) => (
             <div
               key={s.label}
@@ -525,6 +563,7 @@ export default function Logs() {
               className="[position:absolute] [left:10px] [top:50%] [transform:translateY(-50%)] [color:var(--text-4)] [pointer-events:none]"
             />
             <input
+              aria-label="Search logs"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search logs..."
@@ -536,7 +575,7 @@ export default function Logs() {
             onChange={setLevelFilter}
             options={LEVELS.map((l) => ({
               value: l,
-              label: l === "all" ? "All Levels" : l,
+              label: l === "all" ? "All levels" : l,
             }))}
             minWidth={120}
           />
@@ -545,7 +584,7 @@ export default function Logs() {
             onChange={setServiceFilter}
             options={SERVICES.map((s) => ({
               value: s,
-              label: s === "all" ? "All Services" : s,
+              label: s === "all" ? "All services" : s,
             }))}
             minWidth={160}
           />
@@ -584,127 +623,125 @@ export default function Logs() {
         </div>
       </div>
 
-      {/* Log stream */}
-      <div className="overflow-x-auto max-w-full [flex:1] [overflow-y:auto] [background:var(--bg)]">
-        {/* Header */}
-        <div className="[display:grid] [grid-template-columns:116px_92px_160px_1fr] [min-width:640px] [align-items:center] [height:36px] [border-bottom:1px_solid_var(--border)] [background:var(--bg-2)] [position:sticky] [top:0] [z-index:10]">
-          <SortableTH
-            col="timestamp"
-            label="Timestamp"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <SortableTH
-            col="level"
-            label="Level"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <SortableTH
-            col="service"
-            label="Service"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)] [padding:0_12px] [white-space:nowrap]">
-            Message
-          </div>
-        </div>
+      <div className="incident-grid--inset h-[var(--workspace-panel-max-height)] flex-none overflow-hidden border-y border-border">
+        <SherlockGrid
+          rowData={sorted}
+          getRowId={({ data }) => String(data.id)}
+          onRowClicked={({ data }) =>
+            data && setExpandedLogId(expandedLogId === data.id ? null : data.id)
+          }
+          columnDefs={[
+            {
+              field: "ts",
+              headerName: "Timestamp",
+              width: 130,
+              cellClass: "font-mono text-xs text-[var(--text-4)]",
+            },
+            {
+              field: "level",
+              headerName: "Level",
+              width: 110,
+              cellRenderer: ({ value }) => {
+                const token = levelStyle(value)
+                return (
+                  <span style={{ color: token.color }} className="font-mono text-xs font-semibold">
+                    {value}
+                  </span>
+                )
+              },
+            },
+            {
+              field: "service",
+              headerName: "Service",
+              minWidth: 170,
+              cellClass: "font-mono text-xs",
+            },
+            {
+              field: "message",
+              headerName: "Message",
+              minWidth: 360,
+              flex: 1,
+              cellClass: "font-mono text-xs",
+            },
+          ]}
+          overlayNoRowsTemplate="No logs match your filters."
+        />
+      </div>
 
-        {sorted.map((log, i) => {
-          const ls = levelStyle(log.level)
-          const isError = log.level === "ERROR"
+      {expandedLogId &&
+        (() => {
+          const log = sorted.find((item) => item.id === expandedLogId)
+          if (!log) return null
+          const traceId = `trace_${String(log.id).padStart(8, "0")}`
           return (
-            <div
-              key={log.id}
-              style={{
-                background: isError
-                  ? "rgba(var(--red-rgb, 239,68,68), 0.04)"
-                  : i % 2 === 0
-                    ? "transparent"
-                    : "transparent",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "var(--bg-3)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = isError
-                  ? "rgba(239,68,68,0.04)"
-                  : "transparent")
-              }
-              className="[display:grid] [grid-template-columns:116px_92px_160px_1fr] [min-width:640px] [align-items:center] [height:36px] [border-bottom:1px_solid_var(--border)] [transition:background_0.08s]"
-            >
-              {/* Timestamp */}
-              <div className="[padding:0_12px]">
-                <span className="[font-size:11px] [font-family:Geist_Mono,_monospace] [color:var(--text-4)]">
-                  {log.ts}
-                </span>
+            <div className="incident-grid--inset grid gap-4 border-y border-border bg-card px-4 py-4 lg:grid-cols-[1fr_auto]">
+              <div className="min-w-0">
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-mono">{log.service}</span>
+                  <span aria-hidden="true">/</span>
+                  <span className="font-mono">{traceId}</span>
+                  <Badge variant="ghost">Demo log detail</Badge>
+                </div>
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-foreground">
+                  {JSON.stringify(
+                    {
+                      timestamp: `2025-05-14T${log.ts}Z`,
+                      level: log.level,
+                      service: log.service,
+                      environment: "production",
+                      message: log.message,
+                      traceId,
+                    },
+                    null,
+                    2,
+                  )}
+                </pre>
               </div>
-
-              {/* Level badge + icon */}
-              <div className="[padding:0_12px] [display:flex] [align-items:center] [gap:5px]">
-                <LevelIcon level={log.level} />
-                {isError ? (
-                  <span
-                    style={{
-                      color: ls.color,
-                      background: ls.bg,
-                      border: `1px solid ${ls.border}`,
-                    }}
-                    className="[display:inline-flex] [align-items:center] [gap:4px] [font-size:10px] [font-weight:600] [font-family:Geist_Mono,_monospace] [letter-spacing:0.04em] [padding:2px_6px] [border-radius:4px]"
-                  >
-                    <CriticalDot />
-                    {log.level}
-                  </span>
-                ) : (
-                  <span
-                    style={{
-                      color: ls.color,
-                      background: ls.bg,
-                      border: `1px solid ${ls.border}`,
-                    }}
-                    className="[font-size:10px] [font-weight:600] [font-family:Geist_Mono,_monospace] [letter-spacing:0.04em] [padding:2px_6px] [border-radius:4px]"
-                  >
-                    {log.level}
-                  </span>
-                )}
-              </div>
-
-              {/* Service */}
-              <div className="[padding:0_12px]">
-                <span className="[font-size:11px] [font-family:Geist_Mono,_monospace] [color:var(--text-3)]">
-                  {log.service}
-                </span>
-              </div>
-
-              {/* Message */}
-              <div className="[padding:0_12px] [min-width:0]">
-                <span
-                  className={[
-                    "[font-size:12px] [font-family:Geist_Mono,_monospace] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap] [display:block]",
-                    isError ? "[color:var(--red)]" : "[color:var(--text-2)]",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
+              <div className="flex items-start gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void copyLog(log)}
                 >
-                  {log.message}
-                </span>
+                  <Copy size={13} aria-hidden="true" />
+                  {copiedLogId === log.id ? "Copied" : "Copy log"}
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/app/traces">
+                    <ExternalLink size={13} aria-hidden="true" />
+                    Related trace
+                  </Link>
+                </Button>
               </div>
             </div>
           )
-        })}
+        })()}
 
-        {sorted.length === 0 && (
-          <div className="[padding:64px] [text-align:center] [color:var(--text-4)]">
-            <p className="[font-size:13px] [margin:0]">
-              No logs match your filters
-            </p>
-          </div>
-        )}
-      </div>
+      <PageInsights
+        page="logs"
+        segments={[
+          {
+            label: "Error",
+            count: sorted.filter((item) => item.level === "ERROR").length,
+            tone: "danger",
+          },
+          {
+            label: "Warning",
+            count: sorted.filter((item) => item.level === "WARN").length,
+            tone: "warning",
+          },
+          {
+            label: "Info",
+            count: sorted.filter((item) => item.level === "INFO").length,
+            tone: "info",
+          },
+          {
+            label: "Debug",
+            count: sorted.filter((item) => item.level === "DEBUG").length,
+            tone: "neutral",
+          },
+        ]}
+      />
     </div>
   )
 }

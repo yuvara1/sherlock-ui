@@ -1,7 +1,11 @@
+import PageHeading from "@/components/workspace/PageHeading"
+import ExportButton from "@/components/workspace/ExportButton"
+import PageInsights from "@/components/workspace/PageInsights"
+import { SherlockGrid } from "@/components/ui/SherlockGrid"
+import { Button as SortButton } from "@/components/ui/button"
 import { useState } from "react"
 import {
   Search,
-  Download,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -205,7 +209,11 @@ function statusColor(s: string) {
     border: "var(--green-border)",
   }
 }
-function SparkBars({ data, color }: { data: number[] color: string }) {
+interface SparkBarsProps {
+  data: number[]
+  color: string
+}
+function SparkBars({ data, color }: SparkBarsProps) {
   const max = Math.max(...data, 1)
   return (
     <div className="[display:flex] [align-items:flex-end] [gap:1px] [height:20px] [width:52px]">
@@ -261,7 +269,10 @@ function SortableTH({
   style?: React.CSSProperties
 }) {
   return (
-    <div
+    <SortButton
+      variant="ghost"
+      size="sm"
+      aria-label={`Sort by ${label}`}
       onClick={() => onSort(col)}
       style={{
         ...style,
@@ -280,7 +291,7 @@ function SortableTH({
     >
       {label}
       <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />
-    </div>
+    </SortButton>
   )
 }
 const SERVICES = [
@@ -383,26 +394,29 @@ export default function Errors() {
     },
   ]
   return (
-    <div className="[height:100%] [display:flex] [flex-direction:column] [overflow:hidden] [font-family:Geist,_sans-serif] [font-size:13px] [color:var(--text-1)]">
+    <div className="app-page [height:100%] [display:flex] [flex-direction:column] [overflow-y:auto] [overflow-x:hidden] [font-family:Geist,_sans-serif] [font-size:13px] [color:var(--text-1)]">
       {/* Page header */}
-      <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:24px_32px_0] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [background:var(--bg)]">
-        <div className="[display:flex] [align-items:flex-start] [justify-content:space-between] [margin-bottom:20px]">
+      <div className="page-header-region max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:16px_20px_0] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [background:var(--bg)]">
+        <PageHeading
+          className="page-heading-row [display:flex] [align-items:flex-start] [justify-content:space-between] [margin-bottom:20px]"
+          actions={
+            <>
+              <ExportButton rows={sorted} name="errors" />
+            </>
+          }
+        >
           <div>
-            <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.025em] [margin:0_0_4px] [color:var(--text-1)]">
+            <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.025em] [margin:0_0_4px] [color:var(--text-1)]">
               Errors
             </h1>
             <p className="[font-size:13px] [color:var(--text-3)] [margin:0]">
               Grouped error events by fingerprint and occurrence count
             </p>
           </div>
-          <button className="[display:flex] [align-items:center] [gap:6px] [padding:0_14px] [height:32px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg)] [color:var(--text-2)] [font-size:13px] [font-family:Geist,_sans-serif] [cursor:pointer] [letter-spacing:-0.01em]">
-            <Download size={13} />
-            Export
-          </button>
-        </div>
+        </PageHeading>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 min-[641px]:grid-cols-4 min-[1201px]:grid-cols-8 gap-3 [display:grid] [grid-template-columns:repeat(4,_1fr)] [gap:12px] [margin-bottom:20px]">
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {stats.map((s) => (
             <div
               key={s.label}
@@ -438,6 +452,7 @@ export default function Errors() {
               className="[position:absolute] [left:10px] [top:50%] [transform:translateY(-50%)] [color:var(--text-4)] [pointer-events:none]"
             />
             <input
+              aria-label="Search errors"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search errors..."
@@ -448,7 +463,7 @@ export default function Errors() {
             value={statusFilter}
             onChange={setStatusFilter}
             options={[
-              { value: "all", label: "All Status" },
+              { value: "all", label: "All statuses" },
               { value: "open", label: "Open" },
               { value: "investigating", label: "Investigating" },
               { value: "resolved", label: "Resolved" },
@@ -459,7 +474,7 @@ export default function Errors() {
             value={sevFilter}
             onChange={setSevFilter}
             options={[
-              { value: "all", label: "All Severity" },
+              { value: "all", label: "All severities" },
               { value: "critical", label: "Critical" },
               { value: "high", label: "High" },
               { value: "medium", label: "Medium" },
@@ -471,7 +486,7 @@ export default function Errors() {
             onChange={setServiceFilter}
             options={SERVICES.map((s) => ({
               value: s,
-              label: s === "all" ? "All Services" : s,
+              label: s === "all" ? "All services" : s,
             }))}
             minWidth={160}
           />
@@ -481,320 +496,104 @@ export default function Errors() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto max-w-full [flex:1] [overflow-y:auto] [background:var(--bg)]">
-        {/* Table header */}
-        <div className="[display:grid] [grid-template-columns:28px_120px_1fr_140px_72px_64px_100px_84px_84px] [min-width:720px] [align-items:center] [height:36px] [border-bottom:1px_solid_var(--border)] [background:var(--bg-2)] [position:sticky] [top:0] [z-index:10]">
-          <div />
-          <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)] [padding:0_12px] [white-space:nowrap]">
-            Fingerprint
-          </div>
-          <SortableTH
-            col="type"
-            label="Error"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <SortableTH
-            col="service"
-            label="Service"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <div
-            className={[
-              ["[text-align:right]"].filter(Boolean).join(" "),
-              "[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)] [padding:0_12px] [white-space:nowrap]",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            Trend
-          </div>
-          <SortableTH
-            col="count"
-            label="Count"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-            className="[text-align:right] [justify-content:flex-end]"
-          />
-          <SortableTH
-            col="users"
-            label="Users"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-            className="[text-align:right] [justify-content:flex-end]"
-          />
-          <SortableTH
-            col="lastSeen"
-            label="Last Seen"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <SortableTH
-            col="status"
-            label="Status"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-        </div>
+      <div className="incident-grid--inset h-[var(--workspace-panel-max-height)] flex-none overflow-hidden border-y border-border">
+        <SherlockGrid
+          rowData={sorted}
+          getRowId={({ data }) => data.id}
+          onRowClicked={({ data }) =>
+            data && setExpanded(expanded === data.id ? null : data.id)
+          }
+          columnDefs={[
+            {
+              field: "fingerprint",
+              headerName: "Fingerprint",
+              minWidth: 130,
+              cellClass: "font-mono text-xs",
+            },
+            { field: "type", headerName: "Error", minWidth: 190, flex: 1 },
+            { field: "message", headerName: "Message", minWidth: 280, flex: 1.5 },
+            { field: "service", headerName: "Service", minWidth: 160 },
+            { field: "count", headerName: "Count", minWidth: 90 },
+            { field: "users", headerName: "Users", minWidth: 90 },
+            {
+              field: "lastSeen",
+              headerName: "Last seen",
+              minWidth: 150,
+            },
+            {
+              field: "severity",
+              headerName: "Severity",
+              minWidth: 110,
+              cellRenderer: ({ value }) => {
+                const token = sevColor(value)
+                return <span style={{ color: token.color }}>{value}</span>
+              },
+            },
+            {
+              field: "status",
+              headerName: "Status",
+              minWidth: 100,
+              cellRenderer: ({ value }) => {
+                const token = statusColor(value)
+                return <span style={{ color: token.color }}>{value}</span>
+              },
+            },
+          ]}
+          overlayNoRowsTemplate="No error groups match your filters."
+        />
+      </div>
 
-        {sorted.map((eg) => {
-          const sv = sevColor(eg.severity)
-          const st = statusColor(eg.status)
-          const isExpanded = expanded === eg.id
-          const isCritical = eg.severity === "critical"
+      {expanded &&
+        (() => {
+          const error = sorted.find((item) => item.id === expanded)
+          if (!error) return null
           return (
-            <div
-              key={eg.id}
-              className="[border-bottom:1px_solid_var(--border)]"
-            >
-              {/* Row */}
-              <div
-                onClick={() => setExpanded(isExpanded ? null : eg.id)}
-                onMouseEnter={(e) => {
-                  if (!isExpanded)
-                    e.currentTarget.style.background = "var(--bg-3)"
-                }}
-                onMouseLeave={(e) => {
-                  if (!isExpanded)
-                    e.currentTarget.style.background = "transparent"
-                }}
-                className={[
-                  "[display:grid] [grid-template-columns:28px_120px_1fr_140px_72px_64px_100px_84px_84px] [min-width:720px] [align-items:center] [height:40px] [cursor:pointer] [transition:background_0.1s]",
-                  isExpanded
-                    ? "[background:var(--bg-2)]"
-                    : "[background:transparent]",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                {/* Chevron */}
-                <div className="[display:flex] [align-items:center] [justify-content:center] [color:var(--text-4)]">
-                  {isExpanded ? (
-                    <ChevronDown size={12} />
-                  ) : (
-                    <ChevronRight size={12} />
-                  )}
+            <div className="incident-grid--inset border-y border-border bg-card p-4">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-mono text-xs text-[var(--text-4)]">
+                    {error.fingerprint}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {error.message}
+                  </p>
                 </div>
-
-                {/* Fingerprint */}
-                <div className="[padding:0_12px]">
-                  <span className="[font-size:11px] [font-family:Geist_Mono,_monospace] [color:var(--text-3)]">
-                    {eg.fingerprint}
-                  </span>
-                </div>
-
-                {/* Error type + message */}
-                <div className="[padding:0_12px] [min-width:0]">
-                  <div className="[display:flex] [align-items:center] [gap:8px] [min-width:0]">
-                    {isCritical ? (
-                      <CriticalDot />
-                    ) : (
-                      <AlertCircle
-                        size={12}
-                        style={{
-                          color: sv.color,
-                        }}
-                        className="[flex-shrink:0]"
-                      />
-                    )}
-                    <span
-                      style={{
-                        color: sv.color,
-                      }}
-                      className="[font-size:11px] [font-family:Geist_Mono,_monospace] [font-weight:600] [flex-shrink:0]"
-                    >
-                      {eg.type}
-                    </span>
-                    <span className="[font-size:12px] [color:var(--text-2)] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap]">
-                      {eg.message}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Service */}
-                <div className="[padding:0_12px]">
-                  <span className="[font-size:11px] [font-family:Geist_Mono,_monospace] [color:var(--text-3)]">
-                    {eg.service}
-                  </span>
-                </div>
-
-                {/* Trend spark */}
-                <div className="[padding:0_12px] [display:flex] [justify-content:flex-end]">
-                  <SparkBars data={eg.trend} color={sv.color} />
-                </div>
-
-                {/* Count */}
-                <div className="[padding:0_12px] [text-align:right]">
-                  <span className="[font-size:13px] [font-family:Geist_Mono,_monospace] [font-weight:600] [color:var(--text-1)] [letter-spacing:-0.02em]">
-                    {eg.count.toLocaleString()}
-                  </span>
-                </div>
-
-                {/* Users */}
-                <div className="[padding:0_12px] [text-align:right]">
-                  <span
-                    className={[
-                      "[font-size:13px] [font-family:Geist_Mono,_monospace]",
-                      eg.users > 0
-                        ? "[color:var(--red)]"
-                        : "[color:var(--text-4)]",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    {eg.users.toLocaleString()}
-                  </span>
-                </div>
-
-                {/* Last Seen */}
-                <div className="[padding:0_12px]">
-                  <span className="[font-size:12px] [font-family:Geist_Mono,_monospace] [color:var(--text-3)]">
-                    {ago(eg.lastSeen)}
-                  </span>
-                </div>
-
-                {/* Status badge */}
-                <div className="[padding:0_12px]">
-                  <span
-                    style={{
-                      color: st.color,
-                      background: st.bg,
-                      border: `1px solid ${st.border}`,
-                    }}
-                    className="[font-size:11px] [font-weight:500] [padding:2px_7px] [border-radius:4px] [text-transform:capitalize]"
-                  >
-                    {eg.status}
-                  </span>
-                </div>
+                <span className="font-mono text-xs text-[var(--text-3)]">
+                  trace {error.traceId}
+                </span>
               </div>
-
-              {/* Expanded detail */}
-              {isExpanded && (
-                <div className="[border-top:1px_solid_var(--border)] [background:var(--bg-2)] [padding:16px_32px_20px] [display:flex] [flex-direction:column] [gap:16px]">
-                  {/* Meta */}
-                  <div className="[display:flex] [gap:32px] [flex-wrap:wrap]">
-                    {[
-                      {
-                        label: "Fingerprint",
-                        value: eg.fingerprint,
-                        mono: true,
-                      },
-                      { label: "Trace ID", value: eg.traceId, mono: true },
-                      {
-                        label: "First Seen",
-                        value: ago(eg.firstSeen),
-                        mono: false,
-                      },
-                      {
-                        label: "Last Seen",
-                        value: ago(eg.lastSeen),
-                        mono: false,
-                      },
-                      { label: "Source", value: eg.file, mono: true },
-                      {
-                        label: "Severity",
-                        value: eg.severity,
-                        mono: false,
-                        badge: sevColor(eg.severity),
-                      },
-                    ].map((m) => (
-                      <div key={m.label}>
-                        <p className="[font-size:11px] [color:var(--text-4)] [margin:0_0_3px] [text-transform:uppercase] [letter-spacing:0.04em] [font-weight:500]">
-                          {m.label}
-                        </p>
-                        {m.badge ? (
-                          <span
-                            style={{
-                              color: m.badge.color,
-                              background: m.badge.bg,
-                              border: `1px solid ${m.badge.border}`,
-                            }}
-                            className="[display:inline-flex] [align-items:center] [gap:5px] [font-size:11px] [font-weight:500] [padding:2px_7px] [border-radius:4px] [text-transform:capitalize]"
-                          >
-                            {m.value === "critical" && <CriticalDot />}
-                            {m.value}
-                          </span>
-                        ) : (
-                          <p
-                            className={[
-                              "[font-size:12px] [color:var(--text-2)] [margin:0]",
-                              m.mono
-                                ? "[font-family:Geist_Mono,_monospace]"
-                                : "[font-family:Geist,_sans-serif]",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                          >
-                            {m.value}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Stack trace */}
-                  <div>
-                    <p className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-4)] [margin:0_0_8px]">
-                      Stack Trace
-                    </p>
-                    <div className="[padding:12px_16px] [border-radius:8px] [background:var(--bg)] [border:1px_solid_var(--border)] [font-family:Geist_Mono,_monospace] [font-size:12px] [line-height:1.8]">
-                      {eg.stack.map((line, i) => (
-                        <div
-                          key={i}
-                          className={[
-                            i === 0
-                              ? "[color:var(--red)]"
-                              : "[color:var(--text-3)]",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                        >
-                          {line}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="[display:flex] [gap:8px]">
-                    {["View Trace", "Search Logs", "Create Incident"].map(
-                      (label) => (
-                        <button
-                          key={label}
-                          className="[height:32px] [padding:0_14px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg)] [color:var(--text-2)] [font-size:13px] [font-family:Geist,_sans-serif] [cursor:pointer] [letter-spacing:-0.01em]"
-                        >
-                          {label}
-                        </button>
-                      ),
-                    )}
-                    {eg.status !== "resolved" && (
-                      <button className="[height:32px] [padding:0_14px] [border-radius:6px] [border:1px_solid_var(--green-border)] [background:var(--green-bg)] [color:var(--green)] [font-size:13px] [font-family:Geist,_sans-serif] [font-weight:500] [cursor:pointer] [margin-left:auto] [letter-spacing:-0.01em]">
-                        Mark Resolved
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+              <pre className="overflow-x-auto whitespace-pre-wrap rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-foreground">
+                {error.stack.join("\n")}
+              </pre>
             </div>
           )
-        })}
+        })()}
 
-        {sorted.length === 0 && (
-          <div className="[padding:64px] [text-align:center] [color:var(--text-4)]">
-            <p className="[font-size:13px] [margin:0]">
-              No errors match your filters
-            </p>
-          </div>
-        )}
-      </div>
+      <PageInsights
+        page="errors"
+        segments={[
+          {
+            label: "Critical",
+            count: sorted.filter((item) => item.severity === "critical").length,
+            tone: "danger",
+          },
+          {
+            label: "High",
+            count: sorted.filter((item) => item.severity === "high").length,
+            tone: "warning",
+          },
+          {
+            label: "Medium",
+            count: sorted.filter((item) => item.severity === "medium").length,
+            tone: "info",
+          },
+          {
+            label: "Low",
+            count: sorted.filter((item) => item.severity === "low").length,
+            tone: "neutral",
+          },
+        ]}
+      />
     </div>
   )
 }

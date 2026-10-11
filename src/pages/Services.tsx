@@ -1,3 +1,7 @@
+import PageHeading from "@/components/workspace/PageHeading"
+import PageInsights from "@/components/workspace/PageInsights"
+import { SherlockGrid } from "@/components/ui/SherlockGrid"
+import { Button as SortButton } from "@/components/ui/button"
 import { useState, useMemo } from "react"
 import {
   Server,
@@ -129,7 +133,7 @@ function HealthBadge({ health }: { health: string }) {
         background: t.bg,
         border: `1px solid ${t.border}`,
       }}
-      className="[display:inline-flex] [align-items:center] [gap:5px] [padding:2px_8px] [border-radius:4px] [font-size:11px] [font-weight:500] [font-family:Geist,_sans-serif] [white-space:nowrap]"
+      className="sherlock-grid-chip [display:inline-flex] [align-items:center] [gap:5px] [padding:2px_8px] [border-radius:4px] [font-size:11px] [font-weight:500] [font-family:Geist,_sans-serif] [white-space:nowrap]"
     >
       {health === "Critical" ? (
         <CriticalDot />
@@ -163,7 +167,7 @@ function LangBadge({ lang }: { lang: string }) {
         color: c.color,
         background: c.bg,
       }}
-      className="[display:inline-block] [padding:2px_7px] [border-radius:4px] [font-size:11px] [font-weight:500] [font-family:Geist_Mono,_monospace] [letter-spacing:-0.01em]"
+      className="sherlock-grid-chip [display:inline-block] [padding:2px_7px] [border-radius:4px] [font-size:11px] [font-weight:500] [font-family:Geist_Mono,_monospace] [letter-spacing:-0.01em]"
     >
       {lang}
     </span>
@@ -211,7 +215,13 @@ function SortableTH({
   const active = sortCol === col
   return (
     <th
-      onClick={() => onSort(col)}
+      aria-sort={
+        active && sortDir
+          ? sortDir === "asc"
+            ? "ascending"
+            : "descending"
+          : "none"
+      }
       style={{
         textAlign: align,
       }}
@@ -227,9 +237,17 @@ function SortableTH({
         .filter(Boolean)
         .join(" ")}
     >
-      <span className="[display:inline-flex] [align-items:center] [gap:4px]">
-        {label} <SortIcon dir={active ? sortDir : null} />
-      </span>
+      <SortButton
+        variant="ghost"
+        size="sm"
+        className="sort-trigger"
+        aria-label={`Sort by ${label}`}
+        onClick={() => onSort(col)}
+      >
+        <span className="[display:inline-flex] [align-items:center] [gap:4px]">
+          {label} <SortIcon dir={active ? sortDir : null} />
+        </span>
+      </SortButton>
     </th>
   )
 }
@@ -313,24 +331,30 @@ export default function Services() {
     letterSpacing: "-0.01em",
   }
   return (
-    <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:24px_32px] [font-family:Geist,_sans-serif] [min-height:100%]">
+    <div className="app-page page-header-region max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:16px_20px] [font-family:Geist,_sans-serif] [min-height:100%]">
       {/* Page header */}
-      <div className="[display:flex] [align-items:center] [justify-content:space-between] [padding-bottom:20px] [border-bottom:1px_solid_var(--border)] [margin-bottom:20px]">
+      <PageHeading
+        className="page-heading-row [display:flex] [align-items:center] [justify-content:space-between] [padding-bottom:20px] [border-bottom:1px_solid_var(--border)] [margin-bottom:20px]"
+        actions={
+          <>
+            <button className="[height:32px] [padding:0_14px] [border-radius:6px] [border:none] [background:var(--text-1)] [color:var(--bg)] [font-size:13px] [font-weight:500] [cursor:pointer] [display:flex] [align-items:center] [gap:6px] [letter-spacing:-0.01em] hover:[opacity:0.85]">
+              Add service
+            </button>
+          </>
+        }
+      >
         <div>
-          <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0]">
+          <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0]">
             Services
           </h1>
           <p className="[font-size:13px] [color:var(--text-3)] [margin:4px_0_0]">
-            All instrumented services and their real-time health
+            Health and performance for every telemetry source
           </p>
         </div>
-        <button className="[height:32px] [padding:0_14px] [border-radius:6px] [border:none] [background:var(--text-1)] [color:var(--bg)] [font-size:13px] [font-weight:500] [cursor:pointer] [display:flex] [align-items:center] [gap:6px] [letter-spacing:-0.01em] hover:[opacity:0.85]">
-          Register service
-        </button>
-      </div>
+      </PageHeading>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 min-[641px]:grid-cols-4 min-[1201px]:grid-cols-8 gap-3 [display:grid] [grid-template-columns:repeat(4,_1fr)] [gap:12px] [margin-bottom:20px]">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {kpis.map((k) => (
           <div
             key={k.label}
@@ -365,7 +389,8 @@ export default function Services() {
             <Search size={13} />
           </span>
           <input
-            placeholder="Search services..."
+            aria-label="Search workloads"
+            placeholder="Search workloads..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={[
@@ -391,116 +416,90 @@ export default function Services() {
           minWidth={120}
         />
         <span className="[font-size:12px] [color:var(--text-4)] [margin-left:4px]">
-          {filtered.length} service{filtered.length !== 1 ? "s" : ""}
+          {filtered.length} workload{filtered.length !== 1 ? "s" : ""}
         </span>
       </div>
 
-      {/* Table */}
-      <div className="[background:var(--bg-2)] [border:1px_solid_var(--border)] [border-radius:8px] [overflow:hidden]">
-        <div className="[overflow-x:auto]">
-          <table className="[width:100%] [border-collapse:collapse]">
-            <thead>
-              <tr>
-                <SortableTH
-                  label="Name"
-                  col="name"
-                  sortCol={sortCol}
-                  sortDir={sortDir}
-                  onSort={onSort}
-                />
-                <SortableTH
-                  label="Language"
-                  col="lang"
-                  sortCol={sortCol}
-                  sortDir={sortDir}
-                  onSort={onSort}
-                />
-                <SortableTH
-                  label="Health"
-                  col="health"
-                  sortCol={sortCol}
-                  sortDir={sortDir}
-                  onSort={onSort}
-                />
-                <SortableTH
-                  label="Requests/min"
-                  col="rpm"
-                  align="right"
-                  sortCol={sortCol}
-                  sortDir={sortDir}
-                  onSort={onSort}
-                />
-                <SortableTH
-                  label="Error Rate"
-                  col="errRate"
-                  align="right"
-                  sortCol={sortCol}
-                  sortDir={sortDir}
-                  onSort={onSort}
-                />
-                <SortableTH
-                  label="P95 Latency"
-                  col="p95"
-                  align="right"
-                  sortCol={sortCol}
-                  sortDir={sortDir}
-                  onSort={onSort}
-                />
-                <SortableTH
-                  label="Instances"
-                  col="instances"
-                  align="right"
-                  sortCol={sortCol}
-                  sortDir={sortDir}
-                  onSort={onSort}
-                />
-                <th
-                  className={[
-                    ["[color:var(--text-4)]"].filter(Boolean).join(" "),
-                    "[padding:0_16px] [height:36px] [text-align:left] [font-size:11px] [font-weight:500] [letter-spacing:0.02em] [white-space:nowrap] [border-bottom:1px_solid_var(--border)] [background:var(--bg)]",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  Last Seen
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s, i) => (
-                <ServiceRow
-                  key={s.name}
-                  s={s}
-                  isLast={i === filtered.length - 1}
-                />
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className={[
-                      [
-                        "[text-align:center] [color:var(--text-4)] [height:80px]",
-                      ]
-                        .filter(Boolean)
-                        .join(" "),
-                      "[padding:0_16px] [height:40px] [font-size:13px] [border-bottom:1px_solid_var(--border)] [white-space:nowrap]",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    No services match your filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        <SherlockGrid
+          rowData={filtered}
+          getRowId={({ data }) => data.name}
+          domLayout="autoHeight"
+          showPagination={false}
+          columnDefs={[
+            {
+              field: "name",
+              headerName: "Name",
+              minWidth: 190,
+              flex: 1,
+              cellClass: "font-mono text-xs font-medium",
+            },
+            {
+              field: "lang",
+              headerName: "Language",
+              minWidth: 120,
+              cellRenderer: ({ value }) => <LangBadge lang={value} />,
+            },
+            {
+              field: "health",
+              headerName: "Health",
+              minWidth: 120,
+              cellRenderer: ({ value }) => <HealthBadge health={value} />,
+            },
+            {
+              field: "rpm",
+              headerName: "Requests/min",
+              minWidth: 130,
+              valueFormatter: ({ value }) => value.toLocaleString(),
+            },
+            {
+              field: "errRate",
+              headerName: "Error rate",
+              minWidth: 110,
+              valueFormatter: ({ value }) => `${value}%`,
+            },
+            {
+              field: "p95",
+              headerName: "P95 latency",
+              minWidth: 110,
+              valueFormatter: ({ value }) => `${value}ms`,
+            },
+            { field: "instances", headerName: "Instances", minWidth: 100 },
+            { field: "lastSeen", headerName: "Last seen", minWidth: 110 },
+          ]}
+          overlayNoRowsTemplate="No services match your filters."
+        />
       </div>
+
+      <PageInsights
+        exportRows={filtered}
+        page="services"
+        segments={[
+          {
+            label: "Healthy",
+            count: filtered.filter((item) => item.health === "Healthy").length,
+            tone: "success",
+          },
+          {
+            label: "Degraded",
+            count: filtered.filter((item) => item.health === "Degraded").length,
+            tone: "warning",
+          },
+          {
+            label: "Critical",
+            count: filtered.filter((item) => item.health === "Critical").length,
+            tone: "danger",
+          },
+        ]}
+      />
     </div>
   )
 }
-function ServiceRow({ s, isLast }: { s: Service isLast: boolean }) {
+interface ServiceRowProps {
+  s: Service
+  isLast: boolean
+}
+function ServiceRow({ s, isLast }: ServiceRowProps) {
   const [hovered, setHovered] = useState(false)
   const errColor =
     s.errRate > 5

@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router"
+import { authApi, authErrorMessage } from "@/api/auth"
 import { motion, AnimatePresence } from "motion/react"
 import {
   Eye,
@@ -112,7 +113,7 @@ function StrengthMeter({ password }: { password: string }) {
 export default function ResetPassword() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const token = params.get("token") ?? "demo"
+  const token = params.get("token") ?? ""
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
   const [showPass, setShowPass] = useState(false)
@@ -146,8 +147,25 @@ export default function ResetPassword() {
       setErrors({ password: "Password is too weak" })
       return
     }
+    if (!token) {
+      setErrors({
+        password: "This reset link is missing its token. Request a new one.",
+      })
+      return
+    }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 1000))
+    try {
+      await authApi.resetPassword(token, password)
+    } catch (err) {
+      setLoading(false)
+      setErrors({
+        password: authErrorMessage(
+          err,
+          "This reset link is invalid or has expired.",
+        ),
+      })
+      return
+    }
     setLoading(false)
     setDone(true)
     setTimeout(() => navigate("/login"), 2000)
@@ -163,7 +181,7 @@ export default function ResetPassword() {
     return "rgba(255,255,255,0.08)"
   }
   return (
-    <div className="dark [min-height:100vh] [display:flex] [align-items:center] [justify-content:center] [padding:24px] [font-family:Geist,_sans-serif] [background:#050510] [position:relative]">
+    <div className="public-surface auth-surface dark [min-height:100vh] [display:flex] [align-items:center] [justify-content:center] [padding:24px] [font-family:Geist,_sans-serif] [background:#050510] [position:relative]">
       <div className="[position:fixed] [inset:0] [background-image:radial-gradient(circle_at_50%_30%,_rgba(50,145,255,0.06)_0%,_transparent_60%),_linear-gradient(rgba(50,145,255,0.02)_1px,_transparent_1px),_linear-gradient(90deg,_rgba(50,145,255,0.02)_1px,_transparent_1px)] [background-size:100%,_44px_44px,_44px_44px] [pointer-events:none]" />
 
       <Link
@@ -233,11 +251,23 @@ export default function ResetPassword() {
                 className="[display:flex] [flex-direction:column] [gap:16px]"
               >
                 <div>
-                  <label className="[font-size:13px] [font-weight:500] [color:rgba(255,255,255,0.55)] [display:block] [margin-bottom:5px]">
+                  <label
+                    htmlFor="new-password"
+                    className="[font-size:13px] [font-weight:500] [color:rgba(255,255,255,0.55)] [display:block] [margin-bottom:5px]"
+                  >
                     New password
                   </label>
                   <div className="[position:relative]">
                     <input
+                      id="new-password"
+                      aria-invalid={
+                        touched.has("password") && !!errors.password
+                      }
+                      aria-describedby={
+                        touched.has("password") && errors.password
+                          ? "new-password-error"
+                          : undefined
+                      }
                       type={showPass ? "text" : "password"}
                       value={password}
                       placeholder="Create a strong password"
@@ -262,6 +292,8 @@ export default function ResetPassword() {
                     />
                     <button
                       type="button"
+                      aria-label={showPass ? "Hide password" : "Show password"}
+                      aria-pressed={showPass}
                       onClick={() => setShowPass(!showPass)}
                       className="[position:absolute] [right:12px] [top:50%] [transform:translateY(-50%)] [background:none] [border:none] [cursor:pointer] [color:rgba(255,255,255,0.3)] [display:flex] [padding:0]"
                     >
@@ -270,7 +302,11 @@ export default function ResetPassword() {
                   </div>
                   {password && <StrengthMeter password={password} />}
                   {touched.has("password") && errors.password && (
-                    <p className="[font-size:12px] [color:#ef4444] [margin-top:5px] [display:flex] [align-items:center] [gap:4px]">
+                    <p
+                      id="new-password-error"
+                      role="alert"
+                      className="[font-size:12px] [color:#ef4444] [margin-top:5px] [display:flex] [align-items:center] [gap:4px]"
+                    >
                       <AlertCircle size={11} />
                       {errors.password}
                     </p>
@@ -278,11 +314,21 @@ export default function ResetPassword() {
                 </div>
 
                 <div>
-                  <label className="[font-size:13px] [font-weight:500] [color:rgba(255,255,255,0.55)] [display:block] [margin-bottom:5px]">
+                  <label
+                    htmlFor="confirm-password"
+                    className="[font-size:13px] [font-weight:500] [color:rgba(255,255,255,0.55)] [display:block] [margin-bottom:5px]"
+                  >
                     Confirm password
                   </label>
                   <div className="[position:relative]">
                     <input
+                      id="confirm-password"
+                      aria-invalid={touched.has("confirm") && !!errors.confirm}
+                      aria-describedby={
+                        touched.has("confirm") && errors.confirm
+                          ? "confirm-password-error"
+                          : undefined
+                      }
                       type={showConfirm ? "text" : "password"}
                       value={confirm}
                       placeholder="Repeat your password"
@@ -308,13 +354,23 @@ export default function ResetPassword() {
                     <button
                       type="button"
                       onClick={() => setShowConfirm(!showConfirm)}
+                      aria-label={
+                        showConfirm
+                          ? "Hide confirm password"
+                          : "Show confirm password"
+                      }
+                      aria-pressed={showConfirm}
                       className="[position:absolute] [right:12px] [top:50%] [transform:translateY(-50%)] [background:none] [border:none] [cursor:pointer] [color:rgba(255,255,255,0.3)] [display:flex] [padding:0]"
                     >
                       {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
                   {touched.has("confirm") && errors.confirm && (
-                    <p className="[font-size:12px] [color:#ef4444] [margin-top:5px] [display:flex] [align-items:center] [gap:4px]">
+                    <p
+                      id="confirm-password-error"
+                      role="alert"
+                      className="[font-size:12px] [color:#ef4444] [margin-top:5px] [display:flex] [align-items:center] [gap:4px]"
+                    >
                       <AlertCircle size={11} />
                       {errors.confirm}
                     </p>

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router"
 import { motion, useInView, AnimatePresence } from "motion/react"
 import {
   Mail,
@@ -152,7 +152,7 @@ export default function Contact() {
     </Link>
   )
   return (
-    <div className="dark [background:#000] [color:#fff] [min-height:100vh] [font-family:Geist,_sans-serif]">
+    <div className="public-surface dark [background:#000] [color:#fff] [min-height:100vh] [font-family:Geist,_sans-serif]">
       {/* Navbar */}
       <Navbar>
         <NavBody className="hidden md:flex">

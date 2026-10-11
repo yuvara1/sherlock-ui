@@ -1,22 +1,25 @@
-import { Sun, Moon } from "lucide-react";
-import { motion } from "motion/react";
-import { useTheme } from "@/lib/theme";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sun, Moon } from "lucide-react"
+import { motion } from "motion/react"
+import { useTheme } from "@/lib/theme"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Button } from "@/components/ui/button"
 
 export function ThemeToggle({ className }: { className?: string }) {
-  const { theme, toggle } = useTheme();
+  const { theme, toggle } = useTheme()
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
+        <Button
+          variant="outline"
+          size="icon"
           onClick={toggle}
           aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          className={`relative w-8 h-8 flex items-center justify-center rounded-md
-            border border-[var(--border)] hover:border-[var(--border-2)]
-            bg-[var(--bg-2)] hover:bg-[var(--bg-3)]
-            text-[var(--text-3)] hover:text-[var(--text-1)]
-            transition-colors duration-150 ${className ?? ""}`}
+          className={`relative text-muted-foreground ${className ?? ""}`}
         >
           <motion.div
             key={theme}
@@ -26,11 +29,11 @@ export function ThemeToggle({ className }: { className?: string }) {
           >
             {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
           </motion.div>
-        </button>
+        </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
         {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       </TooltipContent>
     </Tooltip>
-  );
+  )
 }

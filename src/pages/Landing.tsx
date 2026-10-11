@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router"
 import { motion } from "motion/react"
 import {
   Activity,
@@ -134,7 +134,7 @@ const MODULES = [
   },
   {
     icon: Brain,
-    name: "AI Debugger",
+    name: "Investigation",
     to: "/app/ai",
     desc: "Conversational root cause analysis. Ask in plain English, get evidence-backed answers.",
   },
@@ -1248,7 +1248,7 @@ export default function Landing() {
     setNewsletterEmail("")
   }
   return (
-    <div className="dark [background:#000] [color:#fff] [min-height:100vh] [font-family:Geist,_sans-serif]">
+    <div className="public-surface dark [background:#000] [color:#fff] [min-height:100vh] [font-family:Geist,_sans-serif]">
       {/* ── Nav ── */}
       <Navbar>
         <NavBody>
@@ -1545,7 +1545,7 @@ export default function Landing() {
         <SectionHead
           label="Core capabilities"
           heading="Powerful tools, simple workflow."
-          sub="From AI-powered root cause analysis to noise-free alerts — each feature is designed to cut the time between 'something is wrong' and 'problem solved.'"
+          sub="Trace failures from request to likely cause, then document the evidence and next steps."
         />
 
         <FeaturesShowcase />

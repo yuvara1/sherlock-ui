@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect, useRef, useCallback, useId } from "react"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { Button } from "@/components/ui/button"
+import { useNavigate } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import {
   Search,
@@ -19,6 +21,8 @@ import {
   ArrowRight,
   Hash,
   Zap,
+  Plug,
+  BellRing,
 } from "lucide-react"
 import { useAppStore } from "@/stores/appStore"
 import { MOCK_SERVICES, MOCK_INCIDENTS, MOCK_ERROR_GROUPS } from "@/mocks/data"
@@ -35,6 +39,7 @@ interface Result {
   }
   action: () => void
 }
+type IndexedResult = Result & { idx: number }
 /* ── Static nav items ────────────────────────────────────── */
 const NAV_ITEMS = [
   {
@@ -59,9 +64,15 @@ const NAV_ITEMS = [
     icon: <Network size={13} />,
   },
   { label: "Deployments", to: "/app/deployments", icon: <Rocket size={13} /> },
-  { label: "APIs", to: "/app/apis", icon: <Terminal size={13} /> },
-  { label: "AI Debugger", to: "/app/ai", icon: <Brain size={13} /> },
+  { label: "API Explorer", to: "/app/apis", icon: <Terminal size={13} /> },
+  { label: "Investigation", to: "/app/ai", icon: <Brain size={13} /> },
   { label: "Settings", to: "/app/settings", icon: <Settings size={13} /> },
+  { label: "Integrations", to: "/app/integrations", icon: <Plug size={13} /> },
+  {
+    label: "Alerts",
+    to: "/app/alerts",
+    icon: <BellRing size={13} />,
+  },
 ]
 const SEVERITY_COLOR: Record<string, string> = {
   CRITICAL: "var(--red)",
@@ -92,6 +103,7 @@ export function CommandPalette({
   const { projects, setActiveProject } = useAppStore()
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const listId = useId()
   const go = useCallback(
     (to: string) => {
       navigate(to)
@@ -205,7 +217,6 @@ export function CommandPalette({
     if (open) {
       setQuery("")
       setCursor(0)
-      setTimeout(() => inputRef.current?.focus(), 30)
     }
   }, [open])
   /* Keyboard navigation */
@@ -216,15 +227,17 @@ export function CommandPalette({
         onClose()
         return
       }
+      if (e.target !== inputRef.current) return
       if (e.key === "ArrowDown") {
         e.preventDefault()
-        setCursor((c) => Math.min(c + 1, total - 1))
+        setCursor((c) => Math.max(0, Math.min(c + 1, total - 1)))
       }
       if (e.key === "ArrowUp") {
         e.preventDefault()
         setCursor((c) => Math.max(c - 1, 0))
       }
       if (e.key === "Enter" && results[cursor]) {
+        e.preventDefault()
         results[cursor].action()
       }
     }
@@ -241,14 +254,10 @@ export function CommandPalette({
   /* Group the results */
   const groups: {
     label: string
-    items: Result & {
-      idx: number
-    }[]
+    items: IndexedResult[]
   }[] = []
   let idx = 0
-  const grouped: Record<string, Result & {
-    idx: number
-  }[]> = {}
+  const grouped: Record<string, IndexedResult[]> = {}
   for (const r of results) {
     if (!grouped[r.group]) grouped[r.group] = []
     grouped[r.group].push({ ...r, idx: idx++ })
@@ -257,163 +266,213 @@ export function CommandPalette({
     groups.push({ label, items })
   }
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.12 }}
-            onClick={onClose}
-            className="[position:fixed] [inset:0] [z-index:1000] [background:rgba(0,0,0,0.5)] [backdrop-filter:blur(2px)]"
-          />
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose()
+      }}
+    >
+      <AnimatePresence>
+        {open && (
+          <DialogPrimitive.Portal>
+            {/* Backdrop */}
+            <DialogPrimitive.Overlay asChild>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
+                onClick={onClose}
+                className="[position:fixed] [inset:0] [z-index:1000] [background:rgba(0,0,0,0.5)] [backdrop-filter:blur(2px)]"
+              />
+            </DialogPrimitive.Overlay>
 
-          {/* Panel — outer div handles centering, motion.div handles animation */}
-          <div className="[position:fixed] [inset:0] [z-index:1001] [display:flex] [align-items:center] [justify-content:center] [pointer-events:none]">
-            <motion.div
-              initial={{ opacity: 0, y: -12, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.97 }}
-              transition={{ duration: 0.14, ease: "easeOut" }}
-              className="[pointer-events:auto] [width:min(560px,_calc(100vw_-_32px))] [background:var(--bg-2)] [border:1px_solid_var(--border-2)] [border-radius:12px] [box-shadow:0_24px_80px_rgba(0,0,0,0.28),_0_4px_16px_rgba(0,0,0,0.16)] [overflow:hidden] [font-family:Geist,_sans-serif]"
+            {/* Panel — outer div handles centering, motion.div handles animation */}
+            <DialogPrimitive.Content
+              asChild
+              aria-describedby={undefined}
+              onOpenAutoFocus={(event) => {
+                event.preventDefault()
+                inputRef.current?.focus()
+              }}
             >
-              {/* Input row */}
-              <div className="[display:flex] [align-items:center] [gap:10px] [padding:12px_14px] [border-bottom:1px_solid_var(--border)]">
-                <Search
-                  size={14}
-                  className="[color:var(--text-4)] [flex-shrink:0]"
-                />
-                <input
-                  ref={inputRef}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search pages, projects, services, incidents…"
-                  className="[flex:1] [background:transparent] [border:none] [outline:none] [font-size:14px] [color:var(--text-1)] [letter-spacing:-0.006em] [font-family:Geist,_sans-serif]"
-                />
-                {query && (
-                  <button
-                    onClick={() => setQuery("")}
-                    className="[background:none] [border:none] [cursor:pointer] [color:var(--text-4)] [padding:0] [line-height:1]"
-                  >
-                    <XCircle size={13} />
-                  </button>
-                )}
-                <kbd className="[font-size:11px] [font-family:Geist_Mono,_monospace] [padding:2px_6px] [border-radius:5px] [border:1px_solid_var(--border-2)] [color:var(--text-4)] [background:var(--bg-3)] [flex-shrink:0]">
-                  Esc
-                </kbd>
-              </div>
-
-              {/* Results */}
-              <div
-                ref={listRef}
-                className="[max-height:380px] [overflow-y:auto] [padding:6px_6px]"
-              >
-                {groups.length === 0 ? (
-                  <div className="[padding:32px_16px] [text-align:center] [color:var(--text-4)] [font-size:13px]">
-                    No results for "{query}"
-                  </div>
-                ) : (
-                  groups.map((group) => (
-                    <div key={group.label}>
-                      {/* Group label */}
-                      <div className="[padding:6px_10px_3px] [font-size:10px] [font-weight:600] [letter-spacing:0.06em] [text-transform:uppercase] [color:var(--text-4)] [font-family:Geist_Mono,_monospace]">
-                        {group.label}
-                      </div>
-                      {group.items.map((item) => {
-                        const active = item.idx === cursor
-                        return (
-                          <button
-                            key={item.id}
-                            data-idx={item.idx}
-                            onClick={item.action}
-                            onMouseEnter={() => setCursor(item.idx)}
-                            className={[
-                              "[display:flex] [align-items:center] [gap:10px] [width:100%] [padding:8px_10px] [border-radius:7px] [border:none] [cursor:pointer] [text-align:left] [transition:background_0.08s]",
-                              active
-                                ? "[background:var(--bg-3)]"
-                                : "[background:transparent]",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                          >
-                            {/* Icon */}
-                            <span
-                              className={[
-                                "[flex-shrink:0] [display:flex]",
-                                active
-                                  ? "[color:var(--text-2)]"
-                                  : "[color:var(--text-4)]",
-                              ]
-                                .filter(Boolean)
-                                .join(" ")}
-                            >
-                              {item.icon}
-                            </span>
-
-                            {/* Text */}
-                            <span className="[flex:1] [min-width:0]">
-                              <span className="[font-size:13px] [font-weight:500] [color:var(--text-1)] [letter-spacing:-0.004em] [display:block] [white-space:nowrap] [overflow:hidden] [text-overflow:ellipsis]">
-                                {item.label}
-                              </span>
-                              {item.sublabel && (
-                                <span className="[font-size:11px] [color:var(--text-4)] [font-family:Geist_Mono,_monospace] [display:block] [white-space:nowrap] [overflow:hidden] [text-overflow:ellipsis]">
-                                  {item.sublabel}
-                                </span>
-                              )}
-                            </span>
-
-                            {/* Badge */}
-                            {item.badge && (
-                              <span
-                                style={{
-                                  background: `color-mix(in srgb, ${item.badge.color} 14%, transparent)`,
-                                  color: item.badge.color,
-                                }}
-                                className="[font-size:10px] [font-weight:600] [letter-spacing:0.04em] [font-family:Geist_Mono,_monospace] [padding:2px_6px] [border-radius:4px] [flex-shrink:0]"
-                              >
-                                {item.badge.text}
-                              </span>
-                            )}
-
-                            {/* Arrow */}
-                            {active && (
-                              <ArrowRight
-                                size={11}
-                                className="[color:var(--text-4)] [flex-shrink:0]"
-                              />
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Footer hints */}
-              <div className="[border-top:1px_solid_var(--border)] [padding:8px_14px] [display:flex] [gap:16px] [align-items:center]">
-                {[
-                  ["↑↓", "navigate"],
-                  ["↵", "open"],
-                  ["Esc", "close"],
-                ].map(([key, hint]) => (
-                  <span
-                    key={key}
-                    className="[display:flex] [align-items:center] [gap:5px] [font-size:11px] [color:var(--text-4)]"
-                  >
-                    <kbd className="[font-family:Geist_Mono,_monospace] [font-size:10px] [padding:1px_5px] [border-radius:4px] [border:1px_solid_var(--border-2)] [background:var(--bg-3)] [color:var(--text-3)]">
-                      {key}
+              <div className="[position:fixed] [inset:0] [z-index:1001] [display:flex] [align-items:center] [justify-content:center] [pointer-events:none]">
+                <motion.div
+                  initial={{ opacity: 0, y: -12, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                  transition={{ duration: 0.14, ease: "easeOut" }}
+                  className="max-h-[90dvh] flex flex-col [pointer-events:auto] [width:min(560px,_calc(100vw_-_32px))] [background:var(--bg-2)] [border:1px_solid_var(--border-2)] [border-radius:12px] [box-shadow:0_24px_80px_rgba(0,0,0,0.28),_0_4px_16px_rgba(0,0,0,0.16)] [overflow:hidden] [font-family:Geist,_sans-serif]"
+                >
+                  <DialogPrimitive.Title className="sr-only">
+                    Search Sherlock
+                  </DialogPrimitive.Title>
+                  {/* Input row */}
+                  <div className="[display:flex] [align-items:center] [gap:10px] [padding:12px_14px] [border-bottom:1px_solid_var(--border)]">
+                    <Search
+                      size={14}
+                      className="[color:var(--text-4)] [flex-shrink:0]"
+                    />
+                    <input
+                      ref={inputRef}
+                      role="combobox"
+                      aria-label="Search Sherlock"
+                      aria-autocomplete="list"
+                      aria-expanded={true}
+                      aria-controls={listId}
+                      aria-activedescendant={
+                        results[cursor] ? `${listId}-${cursor}` : undefined
+                      }
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search pages, projects, services, incidents…"
+                      className="[flex:1] [background:transparent] [border:none] [outline:none] [font-size:14px] [color:var(--text-1)] [letter-spacing:-0.006em] [font-family:Geist,_sans-serif]"
+                    />
+                    {query && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Clear search"
+                        onClick={() => setQuery("")}
+                        className="text-muted-foreground"
+                      >
+                        <XCircle size={13} aria-hidden="true" />
+                      </Button>
+                    )}
+                    <kbd className="[font-size:11px] [font-family:Geist_Mono,_monospace] [padding:2px_6px] [border-radius:5px] [border:1px_solid_var(--border-2)] [color:var(--text-4)] [background:var(--bg-3)] [flex-shrink:0]">
+                      Esc
                     </kbd>
-                    {hint}
-                  </span>
-                ))}
+                  </div>
+
+                  {/* Results */}
+                  <div
+                    ref={listRef}
+                    id={listId}
+                    role="listbox"
+                    aria-label="Search results"
+                    className="[max-height:380px] [overflow-y:auto] [padding:6px_6px]"
+                  >
+                    {groups.length === 0 ? (
+                      <div
+                        role="status"
+                        className="[padding:32px_16px] [text-align:center] [color:var(--text-4)] [font-size:13px]"
+                      >
+                        No results for "{query}"
+                      </div>
+                    ) : (
+                      groups.map((group) => (
+                        <div key={group.label}>
+                          {/* Group label */}
+                          <div className="[padding:6px_10px_3px] [font-size:10px] [font-weight:600] [letter-spacing:0.06em] [text-transform:uppercase] [color:var(--text-4)] [font-family:Geist_Mono,_monospace]">
+                            {group.label}
+                          </div>
+                          {group.items.map((item) => {
+                            const active = item.idx === cursor
+                            return (
+                              <button
+                                key={item.id}
+                                id={`${listId}-${item.idx}`}
+                                role="option"
+                                aria-selected={active}
+                                tabIndex={-1}
+                                data-idx={item.idx}
+                                onClick={item.action}
+                                onMouseEnter={() => setCursor(item.idx)}
+                                className={[
+                                  "[display:flex] [align-items:center] [gap:10px] [width:100%] [padding:8px_10px] [border-radius:7px] [border:none] [cursor:pointer] [text-align:left] [transition:background_0.08s]",
+                                  active
+                                    ? "[background:var(--bg-3)]"
+                                    : "[background:transparent]",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")}
+                              >
+                                {/* Icon */}
+                                <span
+                                  className={[
+                                    "[flex-shrink:0] [display:flex]",
+                                    active
+                                      ? "[color:var(--text-2)]"
+                                      : "[color:var(--text-4)]",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                >
+                                  {item.icon}
+                                </span>
+
+                                {/* Text */}
+                                <span className="[flex:1] [min-width:0]">
+                                  <span className="[font-size:13px] [font-weight:500] [color:var(--text-1)] [letter-spacing:-0.004em] [display:block] [white-space:nowrap] [overflow:hidden] [text-overflow:ellipsis]">
+                                    {item.label}
+                                  </span>
+                                  {item.sublabel && (
+                                    <span className="[font-size:11px] [color:var(--text-4)] [font-family:Geist_Mono,_monospace] [display:block] [white-space:nowrap] [overflow:hidden] [text-overflow:ellipsis]">
+                                      {item.sublabel}
+                                    </span>
+                                  )}
+                                </span>
+
+                                {/* Badge */}
+                                {item.badge && (
+                                  <span
+                                    style={{
+                                      background: `color-mix(in srgb, ${item.badge.color} 14%, transparent)`,
+                                      color: item.badge.color,
+                                    }}
+                                    className="[font-size:10px] [font-weight:600] [letter-spacing:0.04em] [font-family:Geist_Mono,_monospace] [padding:2px_6px] [border-radius:4px] [flex-shrink:0]"
+                                  >
+                                    {item.badge.text}
+                                  </span>
+                                )}
+
+                                {/* Arrow */}
+                                {active && (
+                                  <ArrowRight
+                                    size={11}
+                                    className="[color:var(--text-4)] [flex-shrink:0]"
+                                  />
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Footer hints */}
+                  <div className="shrink-0 flex-wrap [border-top:1px_solid_var(--border)] [padding:8px_14px] [display:flex] [gap:16px] [align-items:center]">
+                    {[
+                      ["↑↓", "navigate"],
+                      ["↵", "open"],
+                      ["Esc", "close"],
+                    ].map(([key, hint]) => (
+                      <span
+                        key={key}
+                        className="[display:flex] [align-items:center] [gap:5px] [font-size:11px] [color:var(--text-4)]"
+                      >
+                        <kbd className="[font-family:Geist_Mono,_monospace] [font-size:10px] [padding:1px_5px] [border-radius:4px] [border:1px_solid_var(--border-2)] [background:var(--bg-3)] [color:var(--text-3)]">
+                          {key}
+                        </kbd>
+                        {hint}
+                      </span>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onClose}
+                      className="ml-auto"
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </motion.div>
               </div>
-            </motion.div>
-          </div>
-        </>
-      )}
-    </AnimatePresence>
+            </DialogPrimitive.Content>
+          </DialogPrimitive.Portal>
+        )}
+      </AnimatePresence>
+    </DialogPrimitive.Root>
   )
 }

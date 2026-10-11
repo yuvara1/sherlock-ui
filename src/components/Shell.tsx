@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import {
   LayoutDashboard,
@@ -16,7 +16,6 @@ import {
   Bell,
   Search,
   ChevronDown,
-  ChevronRight,
   Menu,
   XCircle,
   Rocket,
@@ -24,11 +23,17 @@ import {
   ChevronsUpDown,
   Plug,
   BellRing,
+  Building2,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { UI_PREVIEW_ACCESS_TOKEN } from "@/api/client"
 import { useTheme } from "@/lib/theme"
 import { useAppStore, useActiveProject } from "@/stores/appStore"
 import { SherlockSelect } from "@/components/ui/SherlockSelect"
+import WorkspaceConnection from "@/components/workspace/WorkspaceConnection"
+import { useAuthStore } from "@/stores/authStore"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -38,6 +43,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { CommandPalette } from "@/components/ui/CommandPalette"
+import { StickyBanner } from "@/components/ui/sticky-banner"
 import {
   Tooltip,
   TooltipContent,
@@ -49,6 +55,14 @@ import {
   ResizableHandle,
   usePanelRef,
 } from "@/components/ui/resizable"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 const NAV_GROUPS = [
   {
     label: "Workspace",
@@ -58,30 +72,35 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "Observability",
-    items: [
-      { icon: AlertTriangle, label: "Incidents", to: "/app/incidents" },
-      { icon: XCircle, label: "Errors", to: "/app/errors" },
-      { icon: GitBranch, label: "Traces", to: "/app/traces" },
-      { icon: ScrollText, label: "Logs", to: "/app/logs" },
-      { icon: BarChart3, label: "Metrics", to: "/app/metrics" },
-    ],
+    label: "Build",
+    items: [{ icon: Terminal, label: "API Explorer", to: "/app/apis" }],
   },
   {
-    label: "Infrastructure",
+    label: "Observe",
     items: [
+      { icon: AlertTriangle, label: "Incidents", to: "/app/incidents" },
+      { icon: ScrollText, label: "Logs", to: "/app/logs" },
+      { icon: XCircle, label: "Errors", to: "/app/errors" },
+      { icon: GitBranch, label: "Traces", to: "/app/traces" },
       { icon: Server, label: "Services", to: "/app/services" },
+      { icon: BarChart3, label: "Metrics", to: "/app/metrics" },
       { icon: Network, label: "Dependencies", to: "/app/dependencies" },
       { icon: Rocket, label: "Deployments", to: "/app/deployments" },
     ],
   },
   {
-    label: "Tools & Settings",
+    label: "Investigate",
+    items: [{ icon: Brain, label: "Investigation", to: "/app/ai" }],
+  },
+  {
+    label: "Manage",
     items: [
       { icon: Plug, label: "Integrations", to: "/app/integrations" },
-      { icon: BellRing, label: "Alerts", to: "/app/alerts" },
-      { icon: Terminal, label: "APIs", to: "/app/apis" },
-      { icon: Brain, label: "AI Debugger", to: "/app/ai" },
+      {
+        icon: BellRing,
+        label: "Alerts",
+        to: "/app/alerts",
+      },
       { icon: Settings, label: "Settings", to: "/app/settings" },
     ],
   },
@@ -107,7 +126,11 @@ function StatusDot({ status }: { status: string }) {
     />
   )
 }
-function ProjectIcon({ name, size = 24 }: { name: string size?: number }) {
+interface ProjectIconProps {
+  name: string
+  size?: number
+}
+function ProjectIcon({ name, size = 24 }: ProjectIconProps) {
   const hue = (name.charCodeAt(0) * 37 + name.charCodeAt(1) * 13) % 360
   return (
     <div
@@ -163,35 +186,33 @@ function ProjectPicker() {
     }
   }, [])
   return (
-    <div ref={ref} className="[position:relative]">
-      <button
+    <div ref={ref} className="relative min-w-0">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-label="Select project"
+        aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "var(--bg-3)"
-          e.currentTarget.style.borderColor = "var(--border)"
-        }}
-        onMouseLeave={(e) => {
-          if (!open) {
-            e.currentTarget.style.background = "transparent"
-            e.currentTarget.style.borderColor = "transparent"
-          }
-        }}
         className={[
-          "[display:flex] [align-items:center] [gap:7px] [padding:5px_8px] [border-radius:7px] [border:1px_solid_transparent] [cursor:pointer] [transition:background_0.12s,_border-color_0.12s]",
-          open ? "[background:var(--bg-3)]" : "[background:transparent]",
+          "h-9 w-52 max-w-full justify-start gap-2 border border-transparent px-2",
+          open
+            ? "border-border bg-muted text-foreground"
+            : "bg-transparent hover:border-border hover:bg-muted",
         ]
           .filter(Boolean)
           .join(" ")}
       >
         <ProjectIcon name={activeProject?.name ?? "A"} size={20} />
-        <span className="[font-size:13px] [font-weight:500] [color:var(--text-1)] [letter-spacing:-0.008em] [white-space:nowrap] [max-width:140px] [overflow:hidden] [text-overflow:ellipsis]">
+        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium tracking-[-0.008em] text-foreground">
           {activeProject?.name ?? "Select project"}
         </span>
         <ChevronsUpDown
           size={11}
-          className="[color:var(--text-4)] [flex-shrink:0]"
+          aria-hidden="true"
+          className="shrink-0 text-muted-foreground"
         />
-      </button>
+      </Button>
 
       <AnimatePresence>
         {open && (
@@ -200,86 +221,82 @@ function ProjectPicker() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.97 }}
             transition={{ duration: 0.12, ease: "easeOut" }}
-            className="[position:absolute] [top:calc(100%_+_6px)] [left:0] [width:248px] [background:var(--bg-2)] [border:1px_solid_var(--border)] [border-radius:10px] [box-shadow:0_8px_32px_rgba(0,0,0,0.18),_0_2px_8px_rgba(0,0,0,0.12)] [z-index:999] [overflow:hidden]"
+            className="absolute left-0 top-[calc(100%+0.375rem)] z-[999] w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
           >
-            <div className="[padding:8px_8px_4px]">
-              <div className="[display:flex] [align-items:center] [gap:8px] [padding:6px_10px] [border-radius:7px] [background:var(--bg-3)] [border:1px_solid_var(--border)]">
+            <div className="px-2 pb-1 pt-2">
+              <div className="flex h-9 items-center gap-2 rounded-md border border-border bg-background px-2.5">
                 <Search
-                  size={11}
-                  className="[color:var(--text-4)] [flex-shrink:0]"
+                  size={13}
+                  aria-hidden="true"
+                  className="shrink-0 text-muted-foreground"
                 />
                 <input
                   ref={inputRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Find Project..."
-                  className="[flex:1] [background:transparent] [border:none] [outline:none] [font-size:12px] [font-family:Geist,_sans-serif] [color:var(--text-2)] [letter-spacing:-0.004em]"
+                  placeholder="Find project…"
+                  aria-label="Find project"
+                  className="min-w-0 flex-1 border-none bg-transparent text-xs text-foreground outline-none"
                 />
-                <kbd className="[font-size:10px] [font-family:Geist_Mono,_monospace] [padding:1px_5px] [border-radius:4px] [border:1px_solid_var(--border-2)] [color:var(--text-4)] [background:var(--bg)]">
+                <kbd className="shrink-0 rounded border border-input bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                   Esc
                 </kbd>
               </div>
             </div>
-            <div className="[padding:4px_8px]">
+            <div className="px-2 py-1">
               {filtered.length === 0 ? (
-                <p className="[font-size:12px] [color:var(--text-4)] [padding:10px_8px] [text-align:center]">
+                <p className="px-2 py-3 text-center text-xs text-muted-foreground">
                   No projects found
                 </p>
               ) : (
                 filtered.map((project) => (
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
                     key={project.id}
                     onClick={() => {
                       setActiveProject(project.id)
                       setOpen(false)
                       navigate("/app/overview")
                     }}
-                    onMouseEnter={(e) => {
-                      if (project.id !== activeProjectId)
-                        e.currentTarget.style.background = "var(--bg-3)"
-                    }}
-                    onMouseLeave={(e) => {
-                      if (project.id !== activeProjectId)
-                        e.currentTarget.style.background = "transparent"
-                    }}
                     className={[
-                      "[display:flex] [align-items:center] [gap:10px] [width:100%] [padding:7px_8px] [border-radius:7px] [border:none] [cursor:pointer] [transition:background_0.1s] [text-align:left]",
+                      "grid h-auto w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-2.5 rounded-md px-2 py-2 text-left",
                       project.id === activeProjectId
-                        ? "[background:var(--bg-3)]"
-                        : "[background:transparent]",
+                        ? "bg-muted text-foreground"
+                        : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
                     ]
                       .filter(Boolean)
                       .join(" ")}
                   >
                     <ProjectIcon name={project.name} size={24} />
-                    <div className="[flex:1] [min-width:0]">
-                      <p className="[font-size:13px] [font-weight:500] [color:var(--text-1)] [letter-spacing:-0.008em] [margin:0] [white-space:nowrap] [overflow:hidden] [text-overflow:ellipsis]">
+                    <div className="min-w-0">
+                      <p className="m-0 truncate text-[13px] font-medium tracking-[-0.008em] text-foreground">
                         {project.name}
                       </p>
-                      <p className="[font-size:11px] [color:var(--text-4)] [margin:0] [font-family:Geist_Mono,_monospace]">
+                      <p className="m-0 font-mono text-[11px] text-muted-foreground">
                         {project.serviceCount} services
                       </p>
                     </div>
                     <StatusDot status={project.status} />
-                  </button>
+                  </Button>
                 ))
               )}
             </div>
-            <div className="[border-top:1px_solid_var(--border)] [padding:4px_8px_8px]">
-              <button
+            <div className="border-t border-border px-2 pb-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => {
                   setOpen(false)
                   navigate("/app/projects")
                 }}
-                className="[display:flex] [align-items:center] [gap:10px] [width:100%] [padding:8px_8px] [border-radius:7px] [background:transparent] [border:none] [cursor:pointer] [transition:background_0.1s] hover:[background:var(--bg-3)]"
+                className="h-10 w-full justify-start gap-2.5 px-2 text-[13px] text-muted-foreground"
               >
-                <div className="[width:24px] [height:24px] [border-radius:6px] [flex-shrink:0] [border:1px_dashed_var(--border-2)] [display:flex] [align-items:center] [justify-content:center]">
-                  <Plus size={11} className="[color:var(--text-3)]" />
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-md border border-dashed border-input">
+                  <Plus size={12} aria-hidden="true" />
                 </div>
-                <span className="[font-size:13px] [font-weight:500] [color:var(--text-2)] [letter-spacing:-0.008em]">
-                  Create Project
-                </span>
-              </button>
+                <span className="font-medium">Manage projects</span>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -298,6 +315,18 @@ function SidebarContent({
   isMobile?: boolean
 }) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const [openGroups, setOpenGroups] = useState(() =>
+    NAV_GROUPS.map((group) => group.label),
+  )
+  const toggleGroup = (label: string) => {
+    setOpenGroups((current) =>
+      current.includes(label)
+        ? current.filter((item) => item !== label)
+        : [...current, label],
+    )
+  }
   return (
     <div
       className={[
@@ -310,7 +339,7 @@ function SidebarContent({
       {/* Logo / brand bar */}
       <div
         className={[
-          "[display:flex] [align-items:center] [flex-shrink:0] [height:52px] [padding:0_12px] [border-bottom:1px_solid_var(--border)]",
+          "[display:flex] [align-items:center] [flex-shrink:0] [height:46px] [padding:0_12px] [border-bottom:1px_solid_var(--border)]",
           collapsed
             ? "[justify-content:center]"
             : "[justify-content:space-between]",
@@ -318,9 +347,43 @@ function SidebarContent({
           .filter(Boolean)
           .join(" ")}
       >
-        <AnimatePresence>
-          {!collapsed && (
+        <AnimatePresence mode="wait">
+          {collapsed && !isMobile ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.div
+                  key="collapsed-brand"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={onToggle}
+                    aria-label="Expand sidebar"
+                    className="size-8"
+                  >
+                    <span className="flex size-[22px] items-center justify-center rounded-md bg-[var(--accent)]">
+                      <svg
+                        width={12}
+                        height={11}
+                        viewBox="0 0 16 14"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <path d="M8 1L15 13H1L8 1Z" fill="#fff" />
+                      </svg>
+                    </span>
+                  </Button>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent side="right">Expand sidebar</TooltipContent>
+            </Tooltip>
+          ) : (
             <motion.div
+              key="expanded-brand"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -338,23 +401,25 @@ function SidebarContent({
           )}
         </AnimatePresence>
 
-        {!isMobile && (
-          <button
+        {!isMobile && !collapsed && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={onToggle}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="[display:flex] [align-items:center] [justify-content:center] [width:20px] [height:20px] [color:var(--text-4)] [background:none] [border:none] [cursor:pointer] [flex-shrink:0] [border-radius:4px] [transition:color_0.1s] hover:[color:var(--text-2)]"
+            aria-label="Collapse sidebar"
+            className="size-7 shrink-0 text-muted-foreground"
           >
-            {collapsed ? (
-              <ChevronRight size={12} />
-            ) : (
-              <ChevronDown size={12} className="[transform:rotate(90deg)]" />
-            )}
-          </button>
+            <ChevronDown size={12} aria-hidden="true" className="rotate-90" />
+          </Button>
         )}
       </div>
 
       {/* Nav */}
-      <nav className="[flex:1] [padding:8px] [overflow-y:auto] [overflow-x:hidden]">
+      <nav
+        aria-label="Workspace navigation"
+        className="[flex:1] [padding:8px] [overflow-y:auto] [overflow-x:hidden]"
+      >
         {NAV_GROUPS.map((group) => (
           <section
             key={group.label}
@@ -367,109 +432,110 @@ function SidebarContent({
               .join(" ")}
           >
             {!collapsed && (
-              <div className="[padding:4px_8px_6px] [color:var(--text-4)] [font-size:10px] [font-family:Geist_Mono,_monospace] [font-weight:500] [letter-spacing:0.06em] [text-transform:uppercase]">
-                {group.label}
-              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-expanded={openGroups.includes(group.label)}
+                onClick={() => toggleGroup(group.label)}
+                className="sidebar-group-label h-7 w-full justify-between rounded-md"
+              >
+                <span>{group.label}</span>
+                <ChevronDown
+                  size={12}
+                  aria-hidden="true"
+                  className={
+                    openGroups.includes(group.label)
+                      ? "rotate-0 transition-transform"
+                      : "-rotate-90 transition-transform"
+                  }
+                />
+              </Button>
             )}
-            {group.items.map(({ icon: Icon, label, to }) => (
-              <Tooltip key={to} disableHoverableContent={!collapsed}>
-                <TooltipTrigger asChild>
-                  <NavLink
-                    to={to}
-                    className="[display:block] [margin-bottom:1px]"
-                  >
-                    {({ isActive }) => (
-                      <div
-                        onMouseEnter={(e) => {
-                          if (!isActive) {
-                            ;(e.currentTarget as HTMLDivElement).style.background =
-                              "var(--bg-3)"
-                            ;(e.currentTarget as HTMLDivElement).style.color =
-                              "var(--text-1)"
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isActive) {
-                            ;(e.currentTarget as HTMLDivElement).style.background =
-                              "transparent"
-                            ;(e.currentTarget as HTMLDivElement).style.color =
-                              "var(--text-3)"
-                          }
-                        }}
-                        className={[
-                          "[position:relative] [display:flex] [align-items:center] [gap:10px] [border-radius:6px] [cursor:pointer] [user-select:none] [transition:background_0.1s,_color_0.1s]",
-                          collapsed ? "[padding:7px_0]" : "[padding:6px_8px]",
-                          collapsed
-                            ? "[justify-content:center]"
-                            : "[justify-content:flex-start]",
-                          isActive
-                            ? "[background:var(--accent-bg)]"
-                            : "[background:transparent]",
-                          isActive
-                            ? "[color:var(--accent)]"
-                            : "[color:var(--text-3)]",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        {isActive && (
-                          <span className="[position:absolute] [left:0] [top:50%] [transform:translateY(-50%)] [width:2px] [height:14px] [background:var(--accent)] [border-radius:0_2px_2px_0]" />
-                        )}
-                        <Icon size={13} className="[flex-shrink:0]" />
-                        <AnimatePresence>
-                          {!collapsed && (
-                            <motion.span
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className={[
-                                "[font-size:13px] [letter-spacing:-0.004em] [white-space:nowrap] [overflow:hidden]",
-                                isActive
-                                  ? "[font-weight:500]"
-                                  : "[font-weight:400]",
-                              ]
-                                .filter(Boolean)
-                                .join(" ")}
-                            >
-                              {label}
-                            </motion.span>
+            {(collapsed || openGroups.includes(group.label)) &&
+              group.items.map(({ icon: Icon, label, to }) => (
+                <Tooltip key={to} disableHoverableContent={!collapsed}>
+                  <TooltipTrigger asChild>
+                    <NavLink
+                      to={to}
+                      className="[display:block] [margin-bottom:1px]"
+                    >
+                      {({ isActive }) => (
+                        <div
+                          className={[
+                            "[position:relative] [display:flex] [align-items:center] [gap:10px] [border-radius:6px] [cursor:pointer] [user-select:none] [transition:background_0.1s,_color_0.1s]",
+                            collapsed ? "[padding:7px_0]" : "[padding:6px_8px]",
+                            collapsed
+                              ? "[justify-content:center]"
+                              : "[justify-content:flex-start]",
+                            isActive
+                              ? "[background:var(--accent-bg)]"
+                              : "[background:transparent]",
+                            isActive
+                              ? "[color:var(--accent)]"
+                              : "[color:var(--text-3)] hover:[background:var(--bg-3)] hover:[color:var(--text-1)]",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
+                          {isActive && (
+                            <span className="[position:absolute] [left:0] [top:50%] [transform:translateY(-50%)] [width:2px] [height:14px] [background:var(--accent)] [border-radius:0_2px_2px_0]" />
                           )}
-                        </AnimatePresence>
-                      </div>
-                    )}
-                  </NavLink>
-                </TooltipTrigger>
-                {collapsed && (
-                  <TooltipContent side="right">{label}</TooltipContent>
-                )}
-              </Tooltip>
-            ))}
+                          <Icon size={13} className="[flex-shrink:0]" />
+                          <AnimatePresence>
+                            {!collapsed && (
+                              <motion.span
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className={[
+                                  "[font-size:13px] [letter-spacing:-0.004em] [white-space:nowrap] [overflow:hidden]",
+                                  isActive
+                                    ? "[font-weight:500]"
+                                    : "[font-weight:400]",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")}
+                              >
+                                {label}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
+                    </NavLink>
+                  </TooltipTrigger>
+                  {collapsed && (
+                    <TooltipContent side="right">{label}</TooltipContent>
+                  )}
+                </Tooltip>
+              ))}
           </section>
         ))}
       </nav>
 
       {/* User */}
       <div className="[padding:8px]">
-        <div
-          onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLDivElement).style.background =
-              "var(--bg-3)"
-          }}
-          onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLDivElement).style.background =
-              "transparent"
-          }}
+        <Button
+          type="button"
+          variant="ghost"
+          aria-label="Account settings"
+          onClick={() => navigate("/app/settings?tab=account")}
           className={[
-            "[display:flex] [align-items:center] [gap:8px] [border-radius:6px] [padding:8px] [cursor:pointer] [transition:background_0.1s]",
-            collapsed
-              ? "[justify-content:center]"
-              : "[justify-content:flex-start]",
+            "h-auto w-full gap-2 rounded-md p-2",
+            collapsed ? "justify-center" : "justify-start text-left",
           ]
             .filter(Boolean)
             .join(" ")}
         >
           <div className="[width:22px] [height:22px] [border-radius:50%] [flex-shrink:0] [display:flex] [align-items:center] [justify-content:center] [font-size:10px] [font-weight:600] [font-family:Geist_Mono,_monospace] [background:var(--bg-3)] [border:1px_solid_var(--border-2)] [color:var(--text-1)]">
-            JD
+            {user?.name
+              .split(" ")
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((part) => part[0])
+              .join("")
+              .toUpperCase() ?? "?"}
           </div>
           <AnimatePresence>
             {!collapsed && (
@@ -480,15 +546,15 @@ function SidebarContent({
                 className="[flex:1] [overflow:hidden]"
               >
                 <p className="[font-size:12px] [font-weight:500] [letter-spacing:-0.004em] [color:var(--text-1)] [white-space:nowrap] [margin:0]">
-                  Jane Doe
+                  {user?.name ?? "Account"}
                 </p>
                 <p className="[font-size:11px] [color:var(--text-3)] [white-space:nowrap] [margin:0]">
-                  jane@acme.com
+                  {user?.email ?? ""}
                 </p>
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </Button>
       </div>
     </div>
   )
@@ -499,31 +565,67 @@ function AppHeader({
   onMobileMenu,
   searchOpen,
   setSearchOpen,
+  menuExpanded = false,
 }: {
   currentLabel: string
   onMobileMenu: () => void
   searchOpen: boolean
   setSearchOpen: (v: boolean) => void
+  menuExpanded?: boolean
 }) {
   const { activeEnvironment, setActiveEnvironment } = useAppStore()
+  const navigate = useNavigate()
   return (
-    <header className="[display:flex] [align-items:center] [gap:12px] [padding:0_16px] [flex-shrink:0] [border-bottom:1px_solid_var(--border)] [background:var(--bg)] [height:52px] [position:relative]">
+    <header className="[display:flex] [align-items:center] [gap:10px] [padding:0_12px] [flex-shrink:0] [border-bottom:1px_solid_var(--border)] [background:var(--bg)] [height:46px] [position:relative]">
       {/* Mobile menu */}
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Open navigation"
+        aria-expanded={menuExpanded}
+        aria-controls="mobile-navigation"
         onClick={onMobileMenu}
-        className="lg:hidden [color:var(--text-3)] [background:none] [border:none] [cursor:pointer] [flex-shrink:0]"
+        className="lg:hidden shrink-0 text-muted-foreground"
       >
-        <Menu size={16} />
-      </button>
+        <Menu size={16} aria-hidden="true" />
+      </Button>
 
       {/* LEFT — project picker */}
-      <div className="[flex-shrink:0]">
+      <div className="min-w-0 flex-1 lg:flex-none">
         <ProjectPicker />
       </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Select workspace"
+            className="hidden max-w-48 gap-2 text-muted-foreground md:inline-flex"
+          >
+            <Building2 size={14} aria-hidden="true" />
+            <span className="truncate">Sherlock workspace</span>
+            <ChevronsUpDown size={12} aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-60">
+          <DropdownMenuLabel>Current workspace</DropdownMenuLabel>
+          <DropdownMenuItem className="justify-between">
+            <span>Sherlock workspace</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              Free
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => navigate("/app/settings")}>
+            <Settings size={14} aria-hidden="true" />
+            Workspace settings
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      {/* CENTER — breadcrumb, absolutely centred */}
-      <div className="hidden sm:flex [position:absolute] [left:0] [right:0] [top:0] [bottom:0] [align-items:center] [justify-content:center] [pointer-events:none]">
-        <div className="[pointer-events:auto]">
+      {/* Breadcrumb participates in layout so utility controls cannot overlap it. */}
+      <div className="hidden min-w-0 flex-1 items-center justify-center xl:flex">
+        <div className="min-w-0">
           <Breadcrumb>
             <BreadcrumbList className="[flex-wrap:nowrap]">
               <BreadcrumbItem>
@@ -556,33 +658,46 @@ function AppHeader({
               )
             }
             options={[
-              { value: "development", label: "development" },
-              { value: "staging", label: "staging" },
-              { value: "production", label: "production" },
+              { value: "development", label: "Development" },
+              { value: "staging", label: "Staging" },
+              { value: "production", label: "Production" },
             ]}
             minWidth={120}
           />
         </div>
 
-        <button
+        <Button
+          variant="ghost"
+          aria-label="Search pages and services"
+          aria-haspopup="dialog"
+          aria-expanded={searchOpen}
           onClick={() => setSearchOpen(true)}
-          className="hidden sm:flex [align-items:center] [gap:8px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg-2)] [color:var(--text-3)] [padding:5px_10px] [font-size:12px] [letter-spacing:-0.004em] [cursor:pointer] [transition:border-color_0.15s,_color_0.15s] hover:[border-color:var(--border-2)] hover:[color:var(--text-1)]"
+          className="gap-2 text-muted-foreground"
         >
-          <Search size={11} />
-          <span>Search…</span>
-          <span className="[font-size:10px] [padding:1px_5px] [background:var(--bg-3)] [border:1px_solid_var(--border-2)] [color:var(--text-4)] [border-radius:4px] [font-family:Geist_Mono,_monospace] [margin-left:4px]">
-            ⌘K
+          <Search size={16} aria-hidden="true" />
+          <span className="hidden sm:inline">Search…</span>
+          <span
+            aria-hidden="true"
+            className="hidden lg:inline font-mono text-xs"
+          >
+            Ctrl / ⌘ K
           </span>
-        </button>
+        </Button>
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <button className="[position:relative] [color:var(--text-3)] [background:none] [border:none] [cursor:pointer] [transition:color_0.15s] hover:[color:var(--text-1)]">
-              <Bell size={15} />
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="View alerts, 3 unread"
+              onClick={() => navigate("/app/alerts")}
+              className="relative shrink-0 text-muted-foreground"
+            >
+              <Bell size={15} aria-hidden="true" />
               <span className="[position:absolute] [top:-4px] [right:-4px] [width:14px] [height:14px] [display:flex] [align-items:center] [justify-content:center] [border-radius:50%] [font-size:8px] [font-weight:700] [font-family:Geist_Mono,_monospace] [background:var(--red)] [color:#fff]">
                 3
               </span>
-            </button>
+            </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">3 unread alerts</TooltipContent>
         </Tooltip>
@@ -601,6 +716,9 @@ export default function Shell() {
     () => typeof window !== "undefined" && window.innerWidth < 1024,
   )
   const sidebarPanelRef = usePanelRef()
+  const isPreview = useAuthStore(
+    (state) => state.accessToken === UI_PREVIEW_ACCESS_TOKEN,
+  )
   useTheme()
   const location = useLocation()
   const currentNav = NAV.find((n) => location.pathname.startsWith(n.to))
@@ -642,41 +760,26 @@ export default function Shell() {
   }, [])
   return (
     <div className="[display:flex] [height:100%] [background:var(--bg)] [color:var(--text-1)] [overflow:hidden]">
-      {/* Mobile backdrop */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setMobileOpen(false)}
-            className="lg:hidden [position:fixed] [inset:0] [z-index:40] [background:rgba(0,0,0,0.6)]"
+      <BreadcrumbLink
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:p-3 focus:text-foreground"
+      >
+        Skip to main content
+      </BreadcrumbLink>
+      <Dialog open={isMobile && mobileOpen} onOpenChange={setMobileOpen}>
+        <DialogContent
+          id="mobile-navigation"
+          aria-describedby={undefined}
+          className="left-0 top-0 h-dvh max-h-dvh w-64 max-w-full translate-x-0 translate-y-0 rounded-none bg-background"
+        >
+          <DialogTitle className="sr-only">Workspace navigation</DialogTitle>
+          <SidebarContent
+            collapsed={false}
+            onToggle={() => setMobileOpen(false)}
+            isMobile={true}
           />
-        )}
-      </AnimatePresence>
-
-      {/* ─── Mobile sidebar (fixed overlay) ─────────────────── */}
-      <AnimatePresence>
-        {isMobile && mobileOpen && (
-          <motion.aside
-            key="mobile-sidebar"
-            initial={{ x: -SIDEBAR_EXPANDED_PX }}
-            animate={{ x: 0 }}
-            exit={{ x: -SIDEBAR_EXPANDED_PX }}
-            transition={{ duration: 0.18, ease: "easeInOut" }}
-            style={{
-              width: SIDEBAR_EXPANDED_PX,
-            }}
-            className="[position:fixed] [left:0] [top:0] [bottom:0] [z-index:50] [border-right:1px_solid_var(--border)]"
-          >
-            <SidebarContent
-              collapsed={false}
-              onToggle={() => setMobileOpen(false)}
-              isMobile={true}
-            />
-          </motion.aside>
-        )}
-      </AnimatePresence>
+        </DialogContent>
+      </Dialog>
 
       {/* ─── Desktop: resizable sidebar + main ──────────────── */}
       {isMobile ? (
@@ -687,8 +790,14 @@ export default function Shell() {
             onMobileMenu={() => setMobileOpen(true)}
             searchOpen={searchOpen}
             setSearchOpen={setSearchOpen}
+            menuExpanded={mobileOpen}
           />
-          <main className="[flex:1] [overflow:auto] [background:var(--bg)]">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="[flex:1] [overflow:auto] [background:var(--bg)]"
+          >
+            {isPreview ? <PreviewNotice /> : <WorkspaceConnection />}
             <Outlet />
           </main>
         </div>
@@ -700,7 +809,6 @@ export default function Shell() {
             <ResizablePanel
               panelRef={sidebarPanelRef}
               id="shell-sidebar"
-              order={1}
               defaultSize={`${SIDEBAR_EXPANDED_PX}px`}
               minSize={`${SIDEBAR_COLLAPSED_PX}px`}
               maxSize="320px"
@@ -717,11 +825,7 @@ export default function Shell() {
             />
 
             {/* Main panel */}
-            <ResizablePanel
-              id="shell-main"
-              order={2}
-              className="[overflow:hidden]"
-            >
+            <ResizablePanel id="shell-main" className="[overflow:hidden]">
               <div className="[display:flex] [flex-direction:column] [height:100%]">
                 <AppHeader
                   currentLabel={currentLabel}
@@ -729,7 +833,16 @@ export default function Shell() {
                   searchOpen={searchOpen}
                   setSearchOpen={setSearchOpen}
                 />
-                <main className="[flex:1] [overflow:auto] [background:var(--bg)]">
+                <main
+                  id="main-content"
+                  tabIndex={-1}
+                  className="[flex:1] [overflow:auto] [background:var(--bg)]"
+                >
+                  {isPreview ? (
+                    <StickyPreviewNotice />
+                  ) : (
+                    <WorkspaceConnection />
+                  )}
                   <Outlet />
                 </main>
               </div>
@@ -740,5 +853,35 @@ export default function Shell() {
 
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
+  )
+}
+
+function PreviewNotice() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-primary/20 bg-primary/5 px-4 py-2 text-xs">
+      <span className="font-medium text-primary">UI preview</span>
+      <span className="text-muted-foreground">
+        Local session · Telemetry uses demo data. No live monitoring is
+        connected.
+      </span>
+    </div>
+  )
+}
+
+function StickyPreviewNotice() {
+  return (
+    <StickyBanner
+      removeOnClose
+      sticky={false}
+      className="border-b border-primary/30 bg-gradient-to-b from-blue-500 to-blue-600"
+    >
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pr-8 text-xs text-white">
+        <span className="font-semibold">UI preview</span>
+        <span className="text-white/90">
+          Local session · Telemetry uses demo data. No live monitoring is
+          connected.
+        </span>
+      </div>
+    </StickyBanner>
   )
 }

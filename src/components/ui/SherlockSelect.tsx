@@ -1,4 +1,5 @@
 import { Check, ChevronDown } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 export interface SelectOption {
   value: string
@@ -19,6 +20,9 @@ interface SherlockSelectProps {
   placeholder?: string
   align?: "start" | "center" | "end"
   minWidth?: number | string
+  "aria-label"?: string
+  id?: string
+  disabled?: boolean
 }
 function normalize(o: string | SelectOption): SelectOption {
   return typeof o === "string" ? { value: o, label: o } : o
@@ -49,27 +53,37 @@ export function SherlockSelect({
   placeholder = "Select…",
   align = "start",
   minWidth = 160,
+  "aria-label": ariaLabel,
+  id,
+  disabled,
 }: SherlockSelectProps) {
   const label = currentLabel(value, options, groups, placeholder)
   const flatOptions = options ? options.map(normalize) : undefined
   return (
     <DropdownMenuPrimitive.Root>
       <DropdownMenuPrimitive.Trigger asChild>
-        <button
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          id={id}
+          disabled={disabled}
+          aria-label={ariaLabel}
           style={{
             minWidth: typeof minWidth === "number" ? minWidth : undefined,
             width: typeof minWidth === "string" ? minWidth : undefined,
           }}
-          className="[display:inline-flex] [align-items:center] [gap:6px] [padding:5px_10px] [border-radius:7px] [border:1px_solid_var(--border)] [background:var(--bg-2)] [color:var(--text-3)] [font-size:12px] [font-family:Geist_Mono,_monospace] [cursor:pointer] [outline:none] [white-space:nowrap] [justify-content:space-between] [transition:border-color_0.15s,_color_0.15s] hover:[border-color:var(--border-2)] hover:[color:var(--text-2)]"
+          className="max-w-full justify-between gap-2 font-mono text-xs text-foreground"
         >
           <span className="[overflow:hidden] [text-overflow:ellipsis]">
             {label}
           </span>
           <ChevronDown
             size={11}
+            aria-hidden="true"
             className="[color:var(--text-4)] [flex-shrink:0]"
           />
-        </button>
+        </Button>
       </DropdownMenuPrimitive.Trigger>
 
       <DropdownMenuPrimitive.Portal>
@@ -79,7 +93,7 @@ export function SherlockSelect({
           style={{
             minWidth: typeof minWidth === "number" ? minWidth : 180,
           }}
-          className="&#xA;            data-[state=open]:animate-in&#xA;            data-[state=closed]:animate-out&#xA;            data-[state=closed]:fade-out-0&#xA;            data-[state=open]:fade-in-0&#xA;            data-[state=closed]:zoom-out-95&#xA;            data-[state=open]:zoom-in-95&#xA;            data-[side=bottom]:slide-in-from-top-1&#xA;            data-[side=top]:slide-in-from-bottom-1&#xA;           [z-index:9999] [transform-origin:var(--radix-dropdown-menu-content-transform-origin)] [background:var(--bg-2)] [border:1px_solid_var(--border)] [border-radius:10px] [box-shadow:0_8px_32px_rgba(0,0,0,0.18),0_2px_8px_rgba(0,0,0,0.1)] [padding:4px] [font-family:Geist_Mono,_monospace]"
+          className="z-[9999] max-h-[var(--radix-dropdown-menu-content-available-height)] max-w-[var(--radix-dropdown-menu-content-available-width)] overflow-y-auto rounded-lg border border-border bg-popover p-1 font-mono text-popover-foreground shadow-lg"
         >
           <DropdownMenuPrimitive.RadioGroup
             value={value}

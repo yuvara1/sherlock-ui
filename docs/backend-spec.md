@@ -137,7 +137,7 @@ POST   /mfa/verify            Body: { code } → enables MFA
 DELETE /mfa                   Disables MFA
 ```
 
-**Rate limiting:** 5 failed logins → 5-minute lockout per IP+email (match frontend `authStore` logic). Implemented as a Redis sliding-window counter checked in a Spring Security `AuthenticationFailureHandler`.
+**Rate limiting:** 5 failed logins → 5-minute lockout per IP+email (match frontend `authStore` logic). The auth service persists hashed throttle keys in PostgreSQL so lockouts remain consistent across instances without retaining raw email/IP combinations.
 
 **JWT claims:** `{ sub: userId, orgId, role, env, iat, exp }`  
 **Token storage contract:** Return tokens in response body. The frontend `apiClient` (`src/api/client.ts`) reads/writes `localStorage` keys `elora_access_token` / `elora_refresh_token` and the Zustand persisted stores `elora-auth` / `elora-app-store` (internal legacy naming — the product is "Sherlock"; do **not** rename these keys without a coordinated frontend change). Refresh is `POST /auth/refresh { refreshToken } → { accessToken }`. In production, move tokens to httpOnly `Secure; SameSite=Strict` cookies via the gateway.
@@ -164,7 +164,8 @@ Project
   name: String
   slug: String
   description: String?
-  language: String?             -- Go | Java | Node.js | Python | Scala
+  language: String?             -- legacy project metadata; runtime languages come from telemetry
+  architectureType: Enum        -- UNSPECIFIED | MONOLITH | MODULAR_MONOLITH | MICROSERVICES | SERVERLESS | HYBRID
   status: Enum ACTIVE | ARCHIVED
   environments: String[]        -- ["production","staging","development"]
   createdAt: Instant
@@ -201,7 +202,7 @@ DELETE /org                           → 204 (cascades all data)
 
 -- Projects
 GET    /projects                      → PageResponse<ProjectSummary>
-POST   /projects                      Body: { name, environments, description?, language? }
+POST   /projects                      Body: { name, environments, description? }
 GET    /projects/{projectId}          → Project
 PATCH  /projects/{projectId}
 DELETE /projects/{projectId}
@@ -548,6 +549,14 @@ GET /api/v1/projects/{projectId}/metrics/names  → String[]
 ### 3.9 `service-registry`
 
 Maintains the catalog of services and their dependency graph. Updated from span data by a consumer on `sherlock.spans.raw`.
+
+`service` is a logical telemetry-source name, not a microservice requirement. It
+may identify a monolithic application, an in-process module, a serverless
+function, a worker, or an independently deployed service. Dependency edges may
+therefore represent either in-process module calls or network calls.
+Runtime language is also workload-level telemetry metadata, derived from
+resource attributes such as `telemetry.sdk.language`, rather than project
+configuration.
 
 **Domain entities**
 

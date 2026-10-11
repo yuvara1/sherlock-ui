@@ -15,6 +15,13 @@ export type ServiceHealth = "HEALTHY" | "DEGRADED" | "CRITICAL" | "UNKNOWN";
 export type LogLevel = "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL";
 
 export type Environment = "development" | "staging" | "production";
+export type ArchitectureType =
+  | "UNSPECIFIED"
+  | "MONOLITH"
+  | "MODULAR_MONOLITH"
+  | "MICROSERVICES"
+  | "SERVERLESS"
+  | "HYBRID";
 
 export type SpanStatus = "OK" | "ERROR" | "UNSET";
 
@@ -24,7 +31,9 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  role: "OWNER" | "ADMIN" | "DEVELOPER" | "MEMBER" | "VIEWER";
+  organizationId?: string;
+  mfaEnabled?: boolean;
   avatarUrl?: string;
   createdAt: string;
 }
@@ -51,6 +60,7 @@ export interface Project {
   slug: string;
   organizationId: string;
   environments: Environment[];
+  architectureType: ArchitectureType;
   serviceCount: number;
   lastEventAt: string;
   createdAt: string;

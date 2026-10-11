@@ -14,7 +14,7 @@ import {
   useMotionValueEvent,
 } from "motion/react"
 import React, { useRef, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link } from "react-router"
 interface NavbarProps {
   children: React.ReactNode
   className?: string

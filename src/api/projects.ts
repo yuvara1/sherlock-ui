@@ -1,33 +1,46 @@
-import { apiClient } from "./client";
-import type { Project } from "@/types";
-import { MOCK_PROJECTS } from "@/mocks/data";
+import { apiClient } from "./client"
+import type { Project } from "@/types"
+import type { Page, ProjectInput, ProjectRecord } from "./workspace"
 
-const USE_MOCK = true;
+export function projectForSelector(project: ProjectRecord): Project {
+  return { ...project, status: "UNKNOWN", serviceCount: 0, lastEventAt: "" }
+}
 
 export const projectsApi = {
-  list: async (): Promise<Project[]> => {
-    if (USE_MOCK) return MOCK_PROJECTS;
-    const { data } = await apiClient.get<Project[]>("/projects");
-    return data;
+  page: (
+    params: {
+      page?: number
+      pageSize?: number
+      search?: string
+      status?: string
+    } = {},
+  ) =>
+    apiClient
+      .get<Page<ProjectRecord>>("/projects", { params })
+      .then((response) => response.data),
+  list: async (): Promise<ProjectRecord[]> => {
+    const projects: ProjectRecord[] = []
+    let page = 1
+    let hasMore = true
+    while (hasMore) {
+      const response = await projectsApi.page({ page, pageSize: 100 })
+      projects.push(...response.data)
+      hasMore = response.hasMore
+      page += 1
+    }
+    return projects
   },
-
-  get: async (id: string): Promise<Project> => {
-    if (USE_MOCK) return MOCK_PROJECTS.find(p => p.id === id) ?? MOCK_PROJECTS[0];
-    const { data } = await apiClient.get<Project>(`/projects/${id}`);
-    return data;
-  },
-
-  create: async (payload: Pick<Project, "name" | "environments">): Promise<Project> => {
-    const { data } = await apiClient.post<Project>("/projects", payload);
-    return data;
-  },
-
-  update: async (id: string, payload: Partial<Project>): Promise<Project> => {
-    const { data } = await apiClient.patch<Project>(`/projects/${id}`, payload);
-    return data;
-  },
-
-  delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/projects/${id}`);
-  },
-};
+  get: (id: string) =>
+    apiClient
+      .get<ProjectRecord>(`/projects/${id}`)
+      .then((response) => response.data),
+  create: (body: ProjectInput) =>
+    apiClient
+      .post<ProjectRecord>("/projects", body)
+      .then((response) => response.data),
+  update: (id: string, body: Partial<ProjectInput>) =>
+    apiClient
+      .patch<ProjectRecord>(`/projects/${id}`, body)
+      .then((response) => response.data),
+  delete: (id: string) => apiClient.delete(`/projects/${id}`),
+}

@@ -7,21 +7,22 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default:     "border-transparent bg-primary text-primary-foreground",
-        secondary:   "border-transparent bg-secondary text-secondary-foreground",
-        destructive: "border-transparent bg-destructive text-destructive-foreground",
-        outline:     "text-foreground border-border",
-        ghost:       "border-transparent bg-muted text-muted-foreground",
-        success:     "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
-        warning:     "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
-        error:       "border-red-500/20 bg-red-500/10 text-red-400",
-        info:        "border-blue-500/20 bg-blue-500/10 text-blue-400",
+        default: "border-transparent bg-primary text-primary-foreground",
+        secondary: "border-transparent bg-secondary text-secondary-foreground",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground",
+        outline: "text-foreground border-border",
+        ghost: "border-transparent bg-muted text-muted-foreground",
+        success: "border-success-border bg-success-surface text-success",
+        warning: "border-warning-border bg-warning-surface text-warning",
+        error: "border-danger-border bg-danger-surface text-danger",
+        info: "border-info-border bg-info-surface text-info",
       },
     },
     defaultVariants: {
       variant: "default",
     },
-  }
+  },
 )
 
 export interface BadgeProps

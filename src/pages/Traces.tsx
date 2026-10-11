@@ -1,3 +1,8 @@
+import PageHeading from "@/components/workspace/PageHeading"
+import PageInsights from "@/components/workspace/PageInsights"
+import TraceVisualization from "@/components/traces/TraceVisualization"
+import { SherlockGrid } from "@/components/ui/SherlockGrid"
+import { Button as SortButton } from "@/components/ui/button"
 import { useState } from "react"
 import {
   Search,
@@ -449,7 +454,10 @@ function SortableTH({
   children?: React.ReactNode
 }) {
   return (
-    <div
+    <SortButton
+      variant="ghost"
+      size="sm"
+      aria-label={`Sort by ${label}`}
       onClick={() => onSort(col)}
       style={{
         ...style,
@@ -469,7 +477,7 @@ function SortableTH({
       {children}
       {label}
       <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />
-    </div>
+    </SortButton>
   )
 }
 const COL: React.CSSProperties = {
@@ -482,7 +490,7 @@ const COL: React.CSSProperties = {
   whiteSpace: "nowrap",
 }
 const SERVICES_OPTS = [
-  { value: "all", label: "All Services" },
+  { value: "all", label: "All services" },
   "payment-service",
   "order-service",
   "user-service",
@@ -859,29 +867,35 @@ export default function Traces() {
   const defaultWaterfallId =
     TRACES.find((t) => t.status === "error")?.id ?? TRACES[0].id
   return (
-    <div className="[height:100%] [display:flex] [flex-direction:column] [overflow:hidden] [font-family:Geist,_sans-serif] [font-size:13px] [color:var(--text-1)]">
+    <div className="app-page [height:100%] [display:flex] [flex-direction:column] [overflow-y:auto] [overflow-x:hidden] [font-family:Geist,_sans-serif] [font-size:13px] [color:var(--text-1)]">
       {/* Page header */}
-      <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:24px_32px_0] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [background:var(--bg)]">
-        <div className="[display:flex] [align-items:flex-start] [justify-content:space-between] [margin-bottom:20px]">
+      <div className="page-header-region max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:16px_20px_0] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [background:var(--bg)]">
+        <PageHeading
+          className="page-heading-row [display:flex] [align-items:flex-start] [justify-content:space-between] [margin-bottom:20px]"
+          actions={
+            <>
+              <button
+                onClick={() => setWaterfallId(defaultWaterfallId)}
+                className="[display:flex] [align-items:center] [gap:6px] [padding:0_14px] [height:32px] [border-radius:6px] [border:1px_solid_var(--accent-border)] [background:var(--accent-bg)] [color:var(--accent)] [font-size:13px] [font-family:Geist,_sans-serif] [cursor:pointer] [letter-spacing:-0.01em] hover:[background:rgba(50,145,255,0.14)]"
+              >
+                <GitBranch size={13} />
+                View Waterfall
+              </button>
+            </>
+          }
+        >
           <div>
-            <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.025em] [margin:0_0_4px] [color:var(--text-1)]">
+            <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.025em] [margin:0_0_4px] [color:var(--text-1)]">
               Traces
             </h1>
             <p className="[font-size:13px] [color:var(--text-3)] [margin:0]">
               Distributed request traces across all services
             </p>
           </div>
-          <button
-            onClick={() => setWaterfallId(defaultWaterfallId)}
-            className="[display:flex] [align-items:center] [gap:6px] [padding:0_14px] [height:32px] [border-radius:6px] [border:1px_solid_var(--accent-border)] [background:var(--accent-bg)] [color:var(--accent)] [font-size:13px] [font-family:Geist,_sans-serif] [cursor:pointer] [letter-spacing:-0.01em] hover:[background:rgba(50,145,255,0.14)]"
-          >
-            <GitBranch size={13} />
-            View Waterfall
-          </button>
-        </div>
+        </PageHeading>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 min-[641px]:grid-cols-4 min-[1201px]:grid-cols-8 gap-3 [display:grid] [grid-template-columns:repeat(4,_1fr)] [gap:12px] [margin-bottom:20px]">
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {stats.map((s) => (
             <div
               key={s.label}
@@ -910,6 +924,7 @@ export default function Traces() {
               className="[position:absolute] [left:10px] [top:50%] [transform:translateY(-50%)] [color:var(--text-4)] [pointer-events:none]"
             />
             <input
+              aria-label="Search by trace ID, service"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by trace ID, service..."
@@ -926,7 +941,7 @@ export default function Traces() {
             value={statusFilter}
             onChange={setStatusFilter}
             options={[
-              { value: "all", label: "All Status" },
+              { value: "all", label: "All statuses" },
               { value: "success", label: "Success" },
               { value: "error", label: "Error" },
               { value: "timeout", label: "Timeout" },
@@ -945,273 +960,60 @@ export default function Traces() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto max-w-full [flex:1] [overflow-y:auto] [background:var(--bg)]">
-        {/* Header */}
-        <div className="min-w-0 max-[640px]:grid-cols-[130px_1fr_60px] [display:grid] [grid-template-columns:28px_180px_1fr_140px_72px_100px_100px_84px] [min-width:720px] [align-items:center] [height:36px] [border-bottom:1px_solid_var(--border)] [background:var(--bg-2)] [position:sticky] [top:0] [z-index:10]">
-          <div />
-          <SortableTH
-            col="traceId"
-            label="Trace ID"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          >
-            <GitBranch size={11} className="[opacity:0.6] [margin-right:2px]" />
-          </SortableTH>
-          <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)] [padding:0_12px] [white-space:nowrap]">
-            Root Service / Operation
-          </div>
-          <SortableTH
-            col="spans"
-            label="Spans"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <SortableTH
-            col="duration"
-            label="Duration"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-            className="[text-align:right] [justify-content:flex-end]"
-          />
-          <SortableTH
-            col="timestamp"
-            label="Timestamp"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <SortableTH
-            col="status"
-            label="Status"
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-          <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)] [padding:0_12px] [white-space:nowrap]">
-            Errors
-          </div>
-        </div>
-
-        {sorted.map((t) => {
-          const ss = statusTokens(t.status)
-          const isExpanded = expanded === t.id
-          const isError = t.status === "error"
-          const spans = SPANS_BY_TRACE[t.id] ?? DEFAULT_SPANS
-          const maxDur = Math.max(...spans.map((s) => s.dur), 1)
-          return (
-            <div key={t.id} className="[border-bottom:1px_solid_var(--border)]">
-              <div
-                onClick={() => setExpanded(isExpanded ? null : t.id)}
-                onMouseEnter={(e) => {
-                  if (!isExpanded)
-                    e.currentTarget.style.background = "var(--bg-3)"
-                }}
-                onMouseLeave={(e) => {
-                  if (!isExpanded)
-                    e.currentTarget.style.background = "transparent"
-                }}
-                className={[
-                  "[display:grid] [grid-template-columns:28px_180px_1fr_140px_72px_100px_100px_84px] [min-width:720px] [align-items:center] [height:40px] [cursor:pointer] [transition:background_0.1s]",
-                  isExpanded
-                    ? "[background:var(--bg-2)]"
-                    : "[background:transparent]",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <div className="[display:flex] [align-items:center] [justify-content:center] [color:var(--text-4)]">
-                  {isExpanded ? (
-                    <ChevronDown size={12} />
-                  ) : (
-                    <ChevronRight size={12} />
-                  )}
-                </div>
-                <div className="[padding:0_12px]">
-                  <span className="[font-size:11px] [font-family:Geist_Mono,_monospace] [color:var(--text-3)]">
-                    {t.id.slice(0, 16)}
-                  </span>
-                </div>
-                <div className="[padding:0_12px] [min-width:0]">
-                  <div className="[display:flex] [align-items:center] [gap:8px]">
-                    <span
-                      style={{
-                        background: svcColor(t.service),
-                      }}
-                      className="[width:6px] [height:6px] [border-radius:2px] [flex-shrink:0]"
-                    />
-                    <span className="[font-size:11px] [font-family:Geist_Mono,_monospace] [color:var(--text-4)] [flex-shrink:0]">
-                      {t.service}
-                    </span>
-                    <span className="[font-size:12px] [font-family:Geist_Mono,_monospace] [color:var(--text-2)] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap]">
-                      {t.op}
-                    </span>
-                  </div>
-                </div>
-                <div className="[padding:0_12px]">
-                  <span className="[font-size:12px] [font-family:Geist_Mono,_monospace] [color:var(--text-3)]">
-                    {t.spans} spans
-                  </span>
-                </div>
-                <div className="[padding:0_12px] [text-align:right]">
+      <div className="incident-grid--inset h-[var(--workspace-panel-max-height)] flex-none overflow-hidden border-y border-border">
+        <SherlockGrid
+          rowData={sorted}
+          getRowId={({ data }) => data.id}
+          onRowClicked={({ data }) => data && setWaterfallId(data.id)}
+          columnDefs={[
+            {
+              field: "id",
+              headerName: "Trace ID",
+              minWidth: 180,
+              cellClass: "font-mono text-xs",
+            },
+            { field: "service", headerName: "Root service", minWidth: 170 },
+            { field: "op", headerName: "Operation", minWidth: 240, flex: 1 },
+            { field: "spans", headerName: "Spans", minWidth: 90 },
+            {
+              field: "dur",
+              headerName: "Duration",
+              minWidth: 110,
+              valueFormatter: ({ value }) => fmtDur(value),
+            },
+            {
+              field: "ts",
+              headerName: "Timestamp",
+              minWidth: 130,
+              valueFormatter: ({ value }) => fmtTs(value),
+            },
+            {
+              field: "status",
+              headerName: "Status",
+              minWidth: 110,
+              cellRenderer: ({ value }) => {
+                const tokens = statusTokens(value)
+                return (
                   <span
                     style={{
-                      color:
-                        t.dur > 2000
-                          ? "var(--red)"
-                          : t.dur > 800
-                            ? "var(--yellow)"
-                            : "var(--text-1)",
+                      color: tokens.color,
+                      background: tokens.bg,
+                      borderColor: tokens.border,
                     }}
-                    className="[font-size:13px] [font-family:Geist_Mono,_monospace] [font-weight:600] [letter-spacing:-0.02em]"
+                    className="sherlock-grid-chip inline-flex rounded border px-2 py-0.5 text-xs capitalize"
                   >
-                    {fmtDur(t.dur)}
+                    {value}
                   </span>
-                </div>
-                <div className="[padding:0_12px]">
-                  <span className="[font-size:12px] [font-family:Geist_Mono,_monospace] [color:var(--text-3)]">
-                    {fmtTs(t.ts)}
-                  </span>
-                </div>
-                <div className="[padding:0_12px]">
-                  <span
-                    style={{
-                      color: ss.color,
-                      background: ss.bg,
-                      border: `1px solid ${ss.border}`,
-                    }}
-                    className="[display:inline-flex] [align-items:center] [gap:5px] [font-size:11px] [font-weight:500] [padding:2px_7px] [border-radius:4px] [text-transform:capitalize]"
-                  >
-                    {isError && <CriticalDot />}
-                    {t.status}
-                  </span>
-                </div>
-                <div className="[padding:0_12px]">
-                  <span
-                    className={[
-                      "[font-size:12px] [font-family:Geist_Mono,_monospace]",
-                      t.errors > 0
-                        ? "[color:var(--red)]"
-                        : "[color:var(--text-4)]",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    {t.errors > 0
-                      ? `${t.errors} error${t.errors > 1 ? "s" : ""}`
-                      : "—"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Inline mini-waterfall on expand */}
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2, ease: "easeInOut" }}
-                    className="[overflow:hidden]"
-                  >
-                    <div className="[border-top:1px_solid_var(--border)] [background:var(--bg-2)] [padding:16px_32px_20px]">
-                      <div className="[display:flex] [align-items:center] [justify-content:space-between] [margin-bottom:12px]">
-                        <p className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-4)] [margin:0]">
-                          Span Waterfall
-                        </p>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setWaterfallId(t.id)
-                          }}
-                          className="[height:26px] [padding:0_10px] [border-radius:5px] [border:1px_solid_var(--accent-border)] [background:var(--accent-bg)] [color:var(--accent)] [font-size:11px] [cursor:pointer] [display:flex] [align-items:center] [gap:5px]"
-                        >
-                          <GitBranch size={11} /> Open full waterfall
-                        </button>
-                      </div>
-                      <div className="[display:flex] [flex-direction:column] [gap:2px]">
-                        {spans.map((span, i) => {
-                          const pct = Math.max(
-                            3,
-                            (Math.min(span.dur, maxDur) / maxDur) * 100,
-                          )
-                          const offPct = Math.min(
-                            (span.offset / maxDur) * 100,
-                            97 - pct,
-                          )
-                          return (
-                            <div
-                              key={i}
-                              className="[display:grid] [grid-template-columns:240px_1fr_72px] [align-items:center] [gap:12px] [height:28px]"
-                            >
-                              <div className="[display:flex] [align-items:center] [gap:6px] [min-width:0]">
-                                {span.error ? (
-                                  <CriticalDot />
-                                ) : (
-                                  <span
-                                    style={{
-                                      background: svcColor(span.service),
-                                    }}
-                                    className="[width:5px] [height:5px] [border-radius:2px] [flex-shrink:0]"
-                                  />
-                                )}
-                                <span className="[font-size:11px] [font-family:Geist_Mono,_monospace] [color:var(--text-2)] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap]">
-                                  {span.name}
-                                </span>
-                              </div>
-                              <div className="[position:relative] [height:14px] [background:var(--bg-3)] [border-radius:3px] [overflow:hidden]">
-                                <motion.div
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${pct}%` }}
-                                  transition={{
-                                    duration: 0.35,
-                                    delay: i * 0.04,
-                                    ease: "easeOut",
-                                  }}
-                                  style={{
-                                    left: `${offPct}%`,
-                                    background: span.error
-                                      ? "var(--red)"
-                                      : svcColor(span.service),
-                                  }}
-                                  className="[position:absolute] [height:100%] [border-radius:3px] [opacity:0.75]"
-                                />
-                              </div>
-                              <span
-                                className={[
-                                  "[font-size:11px] [font-family:Geist_Mono,_monospace] [text-align:right]",
-                                  span.error
-                                    ? "[color:var(--red)]"
-                                    : "[color:var(--text-4)]",
-                                ]
-                                  .filter(Boolean)
-                                  .join(" ")}
-                              >
-                                {fmtDur(span.dur)}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )
-        })}
-
-        {sorted.length === 0 && (
-          <div className="[padding:64px] [text-align:center] [color:var(--text-4)]">
-            <p className="[font-size:13px] [margin:0]">
-              No traces match your filters
-            </p>
-          </div>
-        )}
+                )
+              },
+            },
+            { field: "errors", headerName: "Errors", minWidth: 90 },
+          ]}
+          overlayNoRowsTemplate="No traces match your filters."
+        />
       </div>
+
+      <TraceVisualization traces={filtered} onInspect={setWaterfallId} />
 
       {/* Waterfall modal */}
       {waterfallId && (
@@ -1220,6 +1022,28 @@ export default function Traces() {
           onClose={() => setWaterfallId(null)}
         />
       )}
+
+      <PageInsights
+        exportRows={sorted}
+        page="traces"
+        segments={[
+          {
+            label: "Success",
+            count: sorted.filter((item) => item.status === "success").length,
+            tone: "success",
+          },
+          {
+            label: "Error",
+            count: sorted.filter((item) => item.status === "error").length,
+            tone: "danger",
+          },
+          {
+            label: "Timeout",
+            count: sorted.filter((item) => item.status === "timeout").length,
+            tone: "warning",
+          },
+        ]}
+      />
     </div>
   )
 }

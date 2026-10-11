@@ -1,3 +1,4 @@
+import PageHeading from "@/components/workspace/PageHeading"
 import { useState } from "react"
 import {
   AreaChart,
@@ -136,7 +137,11 @@ function ChartTip({ active, payload, label, unit }: any) {
   )
 }
 /* ── Single chart card ──────────────────────────────────────── */
-function ChartCard({ m, unit }: { m: typeof INFRA[0] unit: string }) {
+interface ChartCardProps {
+  m: typeof INFRA[0]
+  unit: string
+}
+function ChartCard({ m, unit }: ChartCardProps) {
   const last = m.data[m.data.length - 1]
   const tick = {
     fontSize: 9,
@@ -269,21 +274,28 @@ export default function Metrics() {
   const charts =
     tab === "Infrastructure" ? INFRA : tab === "Application" ? APP : []
   return (
-    <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:24px_32px] [font-family:Geist,_sans-serif] [min-height:100%]">
+    <div className="app-page page-header-region max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:16px_20px] [font-family:Geist,_sans-serif] [min-height:100%]">
       {/* Page header */}
-      <div className="[display:flex] [align-items:center] [justify-content:space-between] [padding-bottom:20px] [border-bottom:1px_solid_var(--border)] [margin-bottom:20px]">
+      <PageHeading
+        className="page-heading-row [display:flex] [align-items:center] [justify-content:space-between] [padding-bottom:20px] [border-bottom:1px_solid_var(--border)] [margin-bottom:20px]"
+        actions={
+          <>
+            <button className="[height:32px] [padding:0_14px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg-2)] [color:var(--text-1)] [font-size:13px] [font-weight:500] [cursor:pointer] [display:flex] [align-items:center] [gap:6px] [letter-spacing:-0.01em] hover:[background:var(--bg-3)]">
+              <span className="[font-size:16px] [line-height:1]">+</span> Add
+              metric
+            </button>
+          </>
+        }
+      >
         <div>
-          <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0]">
+          <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0]">
             Metrics
           </h1>
           <p className="[font-size:13px] [color:var(--text-3)] [margin:4px_0_0]">
             Custom metrics and infrastructure telemetry
           </p>
         </div>
-        <button className="[height:32px] [padding:0_14px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg-2)] [color:var(--text-1)] [font-size:13px] [font-weight:500] [cursor:pointer] [display:flex] [align-items:center] [gap:6px] [letter-spacing:-0.01em] hover:[background:var(--bg-3)]">
-          <span className="[font-size:16px] [line-height:1]">+</span> Add metric
-        </button>
-      </div>
+      </PageHeading>
 
       {/* Controls bar */}
       <div className="[display:flex] [align-items:center] [justify-content:space-between] [margin-bottom:20px]">

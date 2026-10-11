@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react"
-import { Link } from "react-router-dom"
+import { useState, useCallback, useId } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router"
 import { NavbarLogo } from "@/components/ui/resizable-navbar"
 import { motion, AnimatePresence } from "motion/react"
 import {
@@ -14,6 +14,8 @@ import {
 } from "lucide-react"
 import { registerSchema, getPasswordStrength } from "@/schemas/auth"
 import { useAuthStore } from "@/stores/authStore"
+import axios from "axios"
+import { authApi, authErrorMessage } from "@/api/auth"
 // ── Input field ─────────────────────────────────────────────────────────────
 function Field({
   label,
@@ -39,9 +41,13 @@ function Field({
   prefix?: React.ReactNode
 }) {
   const [focused, setFocused] = useState(false)
+  const fieldId = useId()
   return (
     <div className="[display:flex] [flex-direction:column] [gap:6px]">
-      <label className="[font-size:13px] [font-weight:500] [color:rgba(255,255,255,0.75)] [letter-spacing:-0.002em]">
+      <label
+        htmlFor={fieldId}
+        className="[font-size:13px] [font-weight:500] [color:rgba(255,255,255,0.75)] [letter-spacing:-0.002em]"
+      >
         {label}
       </label>
       <div className="[position:relative]">
@@ -51,6 +57,9 @@ function Field({
           </div>
         )}
         <input
+          id={fieldId}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${fieldId}-error` : undefined}
           type={type}
           value={value}
           placeholder={placeholder}
@@ -84,6 +93,8 @@ function Field({
       <AnimatePresence>
         {error && (
           <motion.p
+            id={`${fieldId}-error`}
+            role="alert"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
@@ -182,51 +193,12 @@ function StrengthMeter({ password }: { password: string }) {
   )
 }
 // ── Verify screen ───────────────────────────────────────────────────────────
-function VerifyScreen({ email }: { email: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="[display:flex] [flex-direction:column] [align-items:center] [text-align:center] [gap:20px]"
-    >
-      <div className="[justify-content:center] [display:flex] [margin-bottom:4px]">
-        <NavbarLogo />
-      </div>
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.15, type: "spring", stiffness: 220 }}
-        className="[width:64px] [height:64px] [border-radius:18px] [background:rgba(255,255,255,0.06)] [border:1px_solid_rgba(255,255,255,0.12)] [display:flex] [align-items:center] [justify-content:center]"
-      >
-        <Mail size={28} color="rgba(255,255,255,0.7)" />
-      </motion.div>
-      <div>
-        <h2 className="[font-size:20px] [font-weight:700] [color:#fff] [letter-spacing:-0.025em] [margin-bottom:8px]">
-          Check your inbox
-        </h2>
-        <p className="[font-size:14px] [color:rgba(255,255,255,0.4)] [line-height:1.6] [max-width:300px]">
-          {"We've sent a verification link to "}
-          <strong className="[color:rgba(255,255,255,0.65)]">{email}</strong>.
-        </p>
-      </div>
-      <Link
-        to="/login?registered=1"
-        className="[width:100%] [padding:12px] [border-radius:10px] [background:#fff] [color:#000] [text-decoration:none] [font-size:14px] [font-weight:600] [display:flex] [align-items:center] [justify-content:center] [gap:8px] [font-family:Geist,_sans-serif]"
-      >
-        Go to sign in <ArrowRight size={14} />
-      </Link>
-      <button
-        type="button"
-        className="[font-size:13px] [color:rgba(255,255,255,0.3)] [background:none] [border:none] [cursor:pointer]"
-      >
-        {"Didn't receive it? Resend"}
-      </button>
-    </motion.div>
-  )
-}
 // ── Step dots ───────────────────────────────────────────────────────────────
-function StepDots({ current, total }: { current: number total: number }) {
+interface StepDotsProps {
+  current: number
+  total: number
+}
+function StepDots({ current, total }: StepDotsProps) {
   return (
     <div className="[display:flex] [gap:5px] [justify-content:center] [margin-bottom:24px]">
       {Array.from({ length: total }, (_, i) => (
@@ -282,9 +254,11 @@ const btnOutline: React.CSSProperties = {
   transition: "opacity 0.15s",
 }
 // ── Main Register ───────────────────────────────────────────────────────────
-type Step = "account" | "password" | "verify"
+type Step = "account" | "password"
 export default function Register() {
-  const { setVerificationSent } = useAuthStore()
+  const [params] = useSearchParams()
+  const { login } = useAuthStore()
+  const navigate = useNavigate()
   const [step, setStep] = useState<Step>("account")
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -387,13 +361,36 @@ export default function Register() {
       return
     }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 1000))
-    setLoading(false)
-    setVerificationSent(email)
-    setStep("verify")
+    try {
+      const res = await authApi.register({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        organizationName: orgName.trim(),
+      })
+      login(res.user, res.tokens, false)
+      setLoading(false)
+      const returnTo = params.get("returnTo")
+      const destination =
+        returnTo &&
+        returnTo.startsWith("/") &&
+        !returnTo.startsWith("//") &&
+        !returnTo.includes("\\")
+          ? returnTo
+          : "/app/projects"
+      navigate(destination, { replace: true })
+    } catch (err) {
+      setLoading(false)
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        setDuplicateEmail(true)
+        setStep("account")
+        return
+      }
+      setErrors((p) => ({ ...p, password: authErrorMessage(err) }))
+    }
   }
   return (
-    <div className="[min-height:100vh] [background:#000] [display:flex] [flex-direction:column] [align-items:center] [justify-content:center] [font-family:Geist,_sans-serif] [padding:40px_20px]">
+    <div className="public-surface auth-surface dark [min-height:100vh] [background:#000] [display:flex] [flex-direction:column] [align-items:center] [justify-content:center] [font-family:Geist,_sans-serif] [padding:40px_20px]">
       <div className="[width:100%] [max-width:360px]">
         <AnimatePresence mode="wait">
           {/* ── Step 1: Account ── */}
@@ -408,7 +405,7 @@ export default function Register() {
               <div className="[display:flex] [justify-content:center] [margin-bottom:28px]">
                 <NavbarLogo />
               </div>
-              <StepDots current={0} total={3} />
+              <StepDots current={0} total={2} />
               <h1 className="[font-size:22px] [font-weight:700] [color:#fff] [text-align:center] [letter-spacing:-0.025em] [margin-bottom:6px]">
                 Create your account
               </h1>
@@ -517,7 +514,11 @@ export default function Register() {
               <p className="[text-align:center] [margin-top:24px] [font-size:14px] [color:rgba(255,255,255,0.35)] [letter-spacing:-0.002em]">
                 Already have an account?{" "}
                 <Link
-                  to="/login"
+                  to={`/login${
+                    params.get("returnTo")
+                      ? `?returnTo=${encodeURIComponent(params.get("returnTo")!)}`
+                      : ""
+                  }`}
                   className="[color:#fff] [font-weight:700] [text-decoration:none]"
                 >
                   Sign in
@@ -538,7 +539,7 @@ export default function Register() {
               <div className="[display:flex] [justify-content:center] [margin-bottom:28px]">
                 <NavbarLogo />
               </div>
-              <StepDots current={1} total={3} />
+              <StepDots current={1} total={2} />
               <h2 className="[font-size:22px] [font-weight:700] [color:#fff] [text-align:center] [letter-spacing:-0.025em] [margin-bottom:6px]">
                 Secure your account
               </h2>
@@ -707,20 +708,6 @@ export default function Register() {
                   ← Back
                 </button>
               </form>
-            </motion.div>
-          )}
-
-          {/* ── Step 3: Verify ── */}
-          {step === "verify" && (
-            <motion.div
-              key="verify"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              <StepDots current={2} total={3} />
-              <VerifyScreen email={email} />
             </motion.div>
           )}
         </AnimatePresence>

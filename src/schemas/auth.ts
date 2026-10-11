@@ -8,7 +8,7 @@ export const loginSchema = z.object({
   password: z
     .string()
     .min(1, "Password is required")
-    .min(8, "Password must be at least 8 characters"),
+    .min(12, "Password must be at least 12 characters"),
   rememberMe: z.boolean().optional(),
   mfaCode: z.string().optional(),
 });
@@ -31,13 +31,15 @@ export const registerSchema = z
       .max(100, "Organization name is too long"),
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
+      .min(12, "Password must be at least 12 characters")
+      .refine((value) => new TextEncoder().encode(value).length <= 72, "Password must be within 72 UTF-8 bytes")
       .regex(/[A-Z]/, "Include at least one uppercase letter")
+      .regex(/[a-z]/, "Include at least one lowercase letter")
       .regex(/[0-9]/, "Include at least one number")
       .regex(/[^a-zA-Z0-9]/, "Include at least one special character"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
     acceptTerms: z.literal(true, {
-      errorMap: () => ({ message: "You must accept the terms to continue" }),
+      error: "You must accept the terms to continue",
     }),
   })
   .refine((d) => d.password === d.confirmPassword, {
@@ -53,8 +55,10 @@ export const resetPasswordSchema = z
   .object({
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
+      .min(12, "Password must be at least 12 characters")
+      .refine((value) => new TextEncoder().encode(value).length <= 72, "Password must be within 72 UTF-8 bytes")
       .regex(/[A-Z]/, "Include at least one uppercase letter")
+      .regex(/[a-z]/, "Include at least one lowercase letter")
       .regex(/[0-9]/, "Include at least one number")
       .regex(/[^a-zA-Z0-9]/, "Include at least one special character"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
@@ -72,7 +76,7 @@ export type ResetPasswordForm = z.infer<typeof resetPasswordSchema>;
 // ── Password strength ──────────────────────────────────────────────────────
 
 export interface StrengthResult {
-  score: 0 | 1 | 2 | 3 | 4;
+  score: 0 | 1 | 2 | 3 | 4 | 5;
   label: string;
   color: string;
   checks: { label: string; passed: boolean }[];
@@ -80,13 +84,13 @@ export interface StrengthResult {
 
 export function getPasswordStrength(password: string): StrengthResult {
   const checks = [
-    { label: "At least 8 characters",  passed: password.length >= 8 },
+    { label: "At least 12 characters", passed: password.length >= 12 },
     { label: "Uppercase letter",        passed: /[A-Z]/.test(password) },
     { label: "Number",                  passed: /[0-9]/.test(password) },
     { label: "Special character",       passed: /[^a-zA-Z0-9]/.test(password) },
-    { label: "12+ characters",          passed: password.length >= 12 },
+    { label: "Lowercase letter",        passed: /[a-z]/.test(password) },
   ];
-  const score = checks.filter((c) => c.passed).length as 0 | 1 | 2 | 3 | 4;
+  const score = checks.filter((c) => c.passed).length as StrengthResult["score"];
   const labels = ["", "Weak", "Fair", "Good", "Strong", "Very strong"] as const;
   const colors = ["", "#ef4444", "#f97316", "#eab308", "#22c55e", "#10b981"] as const;
   return { score, label: labels[score] ?? "", color: colors[score] ?? "", checks };

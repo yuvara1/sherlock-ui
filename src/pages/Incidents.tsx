@@ -1,3 +1,7 @@
+import PageHeading from "@/components/workspace/PageHeading"
+import PageInsights from "@/components/workspace/PageInsights"
+import { SherlockGrid } from "@/components/ui/SherlockGrid"
+import { Button as SortButton } from "@/components/ui/button"
 import React, { useState } from "react"
 import {
   Dialog,
@@ -232,7 +236,7 @@ function SevBadge({ s }: { s: string }) {
         color: c.color,
         background: c.bg,
       }}
-      className="[display:inline-flex] [align-items:center] [gap:5px] [font-size:11px] [font-weight:500] [border-radius:4px] [padding:2px_8px] [text-transform:capitalize] [font-family:Geist_Mono,_monospace]"
+      className="sherlock-grid-chip [display:inline-flex] [align-items:center] [gap:5px] [font-size:11px] [font-weight:500] [border-radius:4px] [padding:2px_8px] [text-transform:capitalize] [font-family:Geist_Mono,_monospace]"
     >
       {s === "critical" && <CriticalDot />}
       {s}
@@ -256,7 +260,7 @@ function StatusBadge({ s }: { s: string }) {
         color: c.color,
         background: c.bg,
       }}
-      className="[display:inline-flex] [align-items:center] [gap:5px] [font-size:11px] [font-weight:500] [border-radius:4px] [padding:2px_8px] [text-transform:capitalize] [font-family:Geist_Mono,_monospace]"
+      className="sherlock-grid-chip [display:inline-flex] [align-items:center] [gap:5px] [font-size:11px] [font-weight:500] [border-radius:4px] [padding:2px_8px] [text-transform:capitalize] [font-family:Geist_Mono,_monospace]"
     >
       {icon}
       {s}
@@ -461,7 +465,13 @@ export default function Incidents() {
     const active = sortCol === col
     return (
       <th
-        onClick={() => onSort(col)}
+        aria-sort={
+          active && sortDir
+            ? sortDir === "asc"
+              ? "ascending"
+              : "descending"
+            : "none"
+        }
         style={{
           ...style,
         }}
@@ -477,95 +487,109 @@ export default function Incidents() {
           .filter(Boolean)
           .join(" ")}
       >
-        <span className="[display:inline-flex] [align-items:center] [gap:4px]">
-          {label} <SortIcon dir={active ? sortDir : null} />
-        </span>
+        <SortButton
+          variant="ghost"
+          size="sm"
+          className="sort-trigger"
+          aria-label={`Sort by ${label}`}
+          onClick={() => onSort(col)}
+        >
+          <span className="[display:inline-flex] [align-items:center] [gap:4px]">
+            {label} <SortIcon dir={active ? sortDir : null} />
+          </span>
+        </SortButton>
       </th>
     )
   }
   return (
-    <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:24px_32px] [display:flex] [flex-direction:column] [gap:0]">
+    <div className="app-page page-header-region max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [height:100%] [padding:16px_20px] [display:flex] [flex-direction:column] [gap:0] [overflow-y:auto] [overflow-x:hidden]">
       {/* Page header */}
-      <div className="grid grid-cols-2 min-[641px]:grid-cols-4 min-[1201px]:grid-cols-8 gap-3 [display:flex] [align-items:center] [justify-content:space-between] [padding-bottom:20px] [border-bottom:1px_solid_var(--border)] [margin-bottom:24px]">
+      <PageHeading
+        className="page-heading-row mb-4 flex items-center justify-between border-b border-border pb-3.5"
+        actions={
+          <>
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <button className="[display:flex] [align-items:center] [gap:6px] [padding:6px_14px] [border-radius:6px] [font-size:13px] [font-weight:500] [background:var(--text-1)] [color:var(--bg)] [border:none] [cursor:pointer] [letter-spacing:-0.01em]">
+                  <Plus size={13} /> New Incident
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Incident</DialogTitle>
+                  <DialogDescription>
+                    Report a new incident to the team.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-3.5 px-5 py-4">
+                  <div className="flex flex-col gap-[5px] [&_label]:text-xs [&_label]:font-medium [&_label]:text-[var(--text-2)] [&_label]:tracking-[-0.004em]">
+                    <label>Title</label>
+                    <input
+                      className="h-[34px] w-full box-border rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 text-[13px] text-[var(--text-1)] tracking-[-0.004em] outline-none transition-colors focus:border-[var(--accent)]"
+                      placeholder="e.g. Payment API timeout"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-[5px] [&_label]:text-xs [&_label]:font-medium [&_label]:text-[var(--text-2)] [&_label]:tracking-[-0.004em]">
+                    <label>Severity</label>
+                    <SherlockSelect
+                      value={createSev}
+                      onChange={setCreateSev}
+                      options={["critical", "high", "medium", "low"]}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-[5px] [&_label]:text-xs [&_label]:font-medium [&_label]:text-[var(--text-2)] [&_label]:tracking-[-0.004em]">
+                    <label>Service</label>
+                    <SherlockSelect
+                      value={createSvc}
+                      onChange={setCreateSvc}
+                      options={[
+                        "api-gateway",
+                        "payment-service",
+                        "order-service",
+                        "auth-service",
+                        "inventory-api",
+                      ]}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-[5px] [&_label]:text-xs [&_label]:font-medium [&_label]:text-[var(--text-2)] [&_label]:tracking-[-0.004em]">
+                    <label>Description</label>
+                    <textarea
+                      className="w-full box-border resize-y rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-[13px] text-[var(--text-1)] tracking-[-0.004em] outline-none transition-colors focus:border-[var(--accent)]"
+                      rows={3}
+                      placeholder="Describe the incident..."
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <button className="h-8 rounded-md border border-[var(--border)] bg-transparent px-3.5 text-[13px] font-medium tracking-[-0.01em] text-[var(--text-2)] cursor-pointer transition-colors hover:border-[var(--border-2)] hover:bg-[var(--bg-3)]">
+                      Cancel
+                    </button>
+                  </DialogClose>
+                  <button
+                    className="h-8 rounded-md border-0 bg-[var(--text-1)] px-3.5 text-[13px] font-medium tracking-[-0.01em] text-[var(--bg)] cursor-pointer transition-opacity hover:opacity-85"
+                    onClick={() => setCreateOpen(false)}
+                  >
+                    Create Incident
+                  </button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      >
         <div>
-          <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0_0_4px]">
+          <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0_0_4px]">
             Incidents
           </h1>
           <p className="[font-size:13px] [color:var(--text-3)] [margin:0]">
             Active and resolved incidents across all services
           </p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <button className="[display:flex] [align-items:center] [gap:6px] [padding:6px_14px] [border-radius:6px] [font-size:13px] [font-weight:500] [background:var(--text-1)] [color:var(--bg)] [border:none] [cursor:pointer] [letter-spacing:-0.01em]">
-              <Plus size={13} /> New Incident
-            </button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Incident</DialogTitle>
-              <DialogDescription>
-                Report a new incident to the team.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-3.5 px-5 py-4">
-              <div className="flex flex-col gap-[5px] [&_label]:text-xs [&_label]:font-medium [&_label]:text-[var(--text-2)] [&_label]:tracking-[-0.004em]">
-                <label>Title</label>
-                <input
-                  className="h-[34px] w-full box-border rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 text-[13px] text-[var(--text-1)] tracking-[-0.004em] outline-none transition-colors focus:border-[var(--accent)]"
-                  placeholder="e.g. Payment API timeout"
-                />
-              </div>
-              <div className="flex flex-col gap-[5px] [&_label]:text-xs [&_label]:font-medium [&_label]:text-[var(--text-2)] [&_label]:tracking-[-0.004em]">
-                <label>Severity</label>
-                <SherlockSelect
-                  value={createSev}
-                  onChange={setCreateSev}
-                  options={["critical", "high", "medium", "low"]}
-                />
-              </div>
-              <div className="flex flex-col gap-[5px] [&_label]:text-xs [&_label]:font-medium [&_label]:text-[var(--text-2)] [&_label]:tracking-[-0.004em]">
-                <label>Service</label>
-                <SherlockSelect
-                  value={createSvc}
-                  onChange={setCreateSvc}
-                  options={[
-                    "api-gateway",
-                    "payment-service",
-                    "order-service",
-                    "auth-service",
-                    "inventory-api",
-                  ]}
-                />
-              </div>
-              <div className="flex flex-col gap-[5px] [&_label]:text-xs [&_label]:font-medium [&_label]:text-[var(--text-2)] [&_label]:tracking-[-0.004em]">
-                <label>Description</label>
-                <textarea
-                  className="w-full box-border resize-y rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-[13px] text-[var(--text-1)] tracking-[-0.004em] outline-none transition-colors focus:border-[var(--accent)]"
-                  rows={3}
-                  placeholder="Describe the incident..."
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <button className="h-8 rounded-md border border-[var(--border)] bg-transparent px-3.5 text-[13px] font-medium tracking-[-0.01em] text-[var(--text-2)] cursor-pointer transition-colors hover:border-[var(--border-2)] hover:bg-[var(--bg-3)]">
-                  Cancel
-                </button>
-              </DialogClose>
-              <button
-                className="h-8 rounded-md border-0 bg-[var(--text-1)] px-3.5 text-[13px] font-medium tracking-[-0.01em] text-[var(--bg)] cursor-pointer transition-opacity hover:opacity-85"
-                onClick={() => setCreateOpen(false)}
-              >
-                Create Incident
-              </button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+      </PageHeading>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 min-[641px]:grid-cols-4 min-[1201px]:grid-cols-8 gap-3 [display:grid] [grid-template-columns:repeat(4,_1fr)] [gap:12px] [margin-bottom:20px]">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           {
             label: "Open",
@@ -606,6 +630,7 @@ export default function Incidents() {
         <div className="[display:flex] [align-items:center] [gap:8px] [flex:1] [min-width:200px] [height:32px] [padding:0_10px] [border:1px_solid_var(--border)] [border-radius:6px] [background:var(--bg-2)]">
           <Search size={12} className="[color:var(--text-4)] [flex-shrink:0]" />
           <input
+            aria-label="Search incidents, services, IDs…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search incidents, services, IDs…"
@@ -650,164 +675,84 @@ export default function Incidents() {
         </span>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto max-w-full [border:1px_solid_var(--border)] [border-radius:8px] [background:var(--bg-2)]">
-        <table className="[width:100%] [min-width:640px] [border-collapse:collapse]">
-          <thead>
-            <tr className="[background:var(--bg)]">
-              <th className="[width:32px] [padding:10px_8px_10px_16px] [border-bottom:1px_solid_var(--border)]" />
-              <SortableTH label="ID" col="id" />
-              <SortableTH label="Title" col="title" className="[width:40%]" />
-              <SortableTH label="Service" col="service" />
-              <SortableTH label="Severity" col="sev" />
-              <SortableTH label="Status" col="status" />
-              <SortableTH
-                label="Duration"
-                col="duration"
-                className="[text-align:right]"
-              />
-              <SortableTH
-                label="Assignee"
-                col="assignee"
-                className="[text-align:right]"
-              />
-              <SortableTH
-                label="Created"
-                col="created"
-                className="[text-align:right]"
-              />
-            </tr>
-          </thead>
-          <tbody>
-            {list.length === 0 && (
-              <tr>
-                <td
-                  colSpan={9}
-                  className="[padding:48px_0] [text-align:center] [font-size:13px] [font-family:Geist_Mono,_monospace] [color:var(--text-4)]"
-                >
-                  No incidents match
-                </td>
-              </tr>
-            )}
-            {list.map((inc) => {
-              const isExpanded = expanded === inc.id
-              return (
-                <React.Fragment key={inc.id}>
-                  <tr
-                    onClick={() => setExpanded(isExpanded ? null : inc.id)}
-                    onMouseEnter={(e) => {
-                      if (!isExpanded)
-                        e.currentTarget.style.background = "var(--bg-3)"
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isExpanded)
-                        e.currentTarget.style.background = "transparent"
-                    }}
-                    className={[
-                      "[height:40px] [border-bottom:1px_solid_var(--border)] [transition:background_0.1s] [cursor:pointer]",
-                      isExpanded
-                        ? "[background:var(--bg-3)]"
-                        : "[background:transparent]",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    {/* Expand chevron */}
-                    <td className="[padding:0_8px_0_16px] [width:32px]">
-                      <motion.span
-                        animate={{ rotate: isExpanded ? 90 : 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="[display:inline-flex] [color:var(--text-4)]"
-                      >
-                        <ChevronRight size={13} />
-                      </motion.span>
-                    </td>
-
-                    {/* ID */}
-                    <td className="[padding:0_12px]">
-                      <span className="[font-size:12px] [font-family:Geist_Mono,_monospace] [color:var(--text-4)]">
-                        {inc.id}
-                      </span>
-                    </td>
-
-                    {/* Title */}
-                    <td className="[padding:0_12px]">
-                      <span className="[font-size:13px] [color:var(--text-2)] [font-weight:500] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap] [display:block] [max-width:360px]">
-                        {inc.title}
-                      </span>
-                    </td>
-
-                    {/* Service */}
-                    <td className="[padding:0_12px]">
-                      <span className="[font-size:12px] [font-family:Geist_Mono,_monospace] [color:var(--text-3)]">
-                        {inc.service}
-                      </span>
-                    </td>
-
-                    {/* Severity */}
-                    <td className="[padding:0_12px]">
-                      <SevBadge s={inc.sev} />
-                    </td>
-
-                    {/* Status */}
-                    <td className="[padding:0_12px]">
-                      <StatusBadge s={inc.status} />
-                    </td>
-
-                    {/* Duration */}
-                    <td
-                      className={[
-                        ["[text-align:right]"].filter(Boolean).join(" "),
-                        "[padding:0_12px]",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    >
-                      <span className="[font-size:12px] [font-family:Geist_Mono,_monospace] [color:var(--text-4)]">
-                        {inc.duration}
-                      </span>
-                    </td>
-
-                    {/* Assignee */}
-                    <td
-                      className={[
-                        ["[text-align:right]"].filter(Boolean).join(" "),
-                        "[padding:0_12px]",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    >
-                      <span className="[font-size:12px] [font-family:Geist_Mono,_monospace] [color:var(--text-4)]">
-                        {inc.assignee}
-                      </span>
-                    </td>
-
-                    {/* Created */}
-                    <td
-                      className={[
-                        ["[text-align:right]"].filter(Boolean).join(" "),
-                        "[padding:0_12px]",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    >
-                      <span className="[font-size:12px] [font-family:Geist_Mono,_monospace] [color:var(--text-4)]">
-                        {ago(inc.created)}
-                      </span>
-                    </td>
-                  </tr>
-
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <ExpandedRow key={`${inc.id}-expanded`} inc={inc} />
-                    )}
-                  </AnimatePresence>
-                </React.Fragment>
-              )
-            })}
-          </tbody>
-        </table>
+      <div className="h-[var(--workspace-panel-max-height)] flex-none overflow-hidden rounded-lg border border-border">
+        <SherlockGrid
+          rowData={list}
+          getRowId={({ data }) => data.id}
+          onRowClicked={({ data }) =>
+            data && setExpanded(expanded === data.id ? null : data.id)
+          }
+          columnDefs={[
+            {
+              field: "id",
+              headerName: "ID",
+              width: 110,
+              cellClass: "font-mono text-xs text-[var(--text-4)]",
+            },
+            { field: "title", headerName: "Title", minWidth: 280, flex: 1 },
+            { field: "service", headerName: "Service", minWidth: 160 },
+            {
+              field: "sev",
+              headerName: "Severity",
+              minWidth: 110,
+              cellRenderer: ({ value }) => <SevBadge s={value} />,
+            },
+            {
+              field: "status",
+              headerName: "Status",
+              minWidth: 130,
+              cellRenderer: ({ value }) => <StatusBadge s={value} />,
+            },
+            { field: "duration", headerName: "Duration", minWidth: 100 },
+            { field: "assignee", headerName: "Assignee", minWidth: 130 },
+            {
+              field: "created",
+              headerName: "Created",
+              minWidth: 110,
+              valueFormatter: ({ value }) => ago(value),
+            },
+          ]}
+          overlayNoRowsTemplate="No incidents match the current filters."
+        />
       </div>
+
+      {expanded && list.some((incident) => incident.id === expanded) && (
+        <div className="incident-grid--inset rounded-lg border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-mono text-xs text-[var(--text-4)]">{expanded}</p>
+              <p className="mt-1 text-sm font-medium text-foreground">
+                {list.find((incident) => incident.id === expanded)?.title}
+              </p>
+            </div>
+            <span className="text-xs text-[var(--text-3)]">
+              {list.find((incident) => incident.id === expanded)?.endpoint}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <PageInsights
+        exportRows={list}
+        page="incidents"
+        segments={[
+          {
+            label: "Open",
+            count: list.filter((item) => item.status === "open").length,
+            tone: "danger",
+          },
+          {
+            label: "Acknowledged",
+            count: list.filter((item) => item.status === "acknowledged").length,
+            tone: "warning",
+          },
+          {
+            label: "Resolved",
+            count: list.filter((item) => item.status === "resolved").length,
+            tone: "success",
+          },
+        ]}
+      />
     </div>
   )
 }

@@ -1,3 +1,6 @@
+import PageHeading from "@/components/workspace/PageHeading"
+import { SherlockGrid } from "@/components/ui/SherlockGrid"
+import { Button as SortButton } from "@/components/ui/button"
 import { useState, useCallback } from "react"
 import {
   Database,
@@ -382,7 +385,7 @@ function StatusBadge({ status }: { status: string }) {
         background: t.bg,
         border: `1px solid ${t.border}`,
       }}
-      className="[display:inline-flex] [align-items:center] [gap:6px] [padding:2px_8px] [border-radius:4px] [font-size:11px] [font-weight:500] [white-space:nowrap]"
+      className="sherlock-grid-chip [display:inline-flex] [align-items:center] [gap:6px] [padding:2px_8px] [border-radius:4px] [font-size:11px] [font-weight:500] [white-space:nowrap]"
     >
       {status === "Critical" ? (
         <CriticalDot />
@@ -407,7 +410,7 @@ function SeverityBadge({ severity }: { severity: string }) {
         background: t.bg,
         border: `1px solid ${t.border}`,
       }}
-      className="[display:inline-flex] [align-items:center] [gap:5px] [padding:2px_8px] [border-radius:4px] [font-size:11px] [font-weight:500]"
+      className="sherlock-grid-chip [display:inline-flex] [align-items:center] [gap:5px] [padding:2px_8px] [border-radius:4px] [font-size:11px] [font-weight:500]"
     >
       {severity !== "None" &&
         (severity === "Critical" ? (
@@ -432,7 +435,7 @@ function LangBadge({ lang }: { lang: string }) {
         color,
         background: `${color}18`,
       }}
-      className="[font-size:11px] [font-family:Geist_Mono,_monospace] [font-weight:500] [padding:2px_7px] [border-radius:4px]"
+      className="sherlock-grid-chip [font-size:11px] [font-family:Geist_Mono,_monospace] [font-weight:500] [padding:2px_7px] [border-radius:4px]"
     >
       {lang}
     </span>
@@ -484,7 +487,13 @@ function SortableTH({
   const active = sortCol === col
   return (
     <th
-      onClick={() => onSort(col)}
+      aria-sort={
+        active && sortDir
+          ? sortDir === "asc"
+            ? "ascending"
+            : "descending"
+          : "none"
+      }
       style={{
         textAlign: align,
       }}
@@ -506,10 +515,18 @@ function SortableTH({
         .filter(Boolean)
         .join(" ")}
     >
-      <span className="[display:inline-flex] [align-items:center] [gap:4px]">
-        {label}
-        <SortIcon dir={active ? sortDir : null} />
-      </span>
+      <SortButton
+        variant="ghost"
+        size="sm"
+        className="sort-trigger"
+        aria-label={`Sort by ${label}`}
+        onClick={() => onSort(col)}
+      >
+        <span className="[display:inline-flex] [align-items:center] [gap:4px]">
+          {label}
+          <SortIcon dir={active ? sortDir : null} />
+        </span>
+      </SortButton>
     </th>
   )
 }
@@ -576,7 +593,7 @@ function GraphModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Graph */}
-        <div className="[padding:24px_32px] [overflow:auto]">
+        <div className="[padding:16px_20px] [overflow:auto]">
           <svg
             width="100%"
             viewBox={`0 0 ${W} ${H}`}
@@ -817,30 +834,36 @@ export default function Dependencies() {
     transition: "background 0.1s",
   })
   return (
-    <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:24px_32px] [font-family:Geist,_sans-serif] [min-height:100%]">
+    <div className="app-page page-header-region max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:16px_20px] [font-family:Geist,_sans-serif] [min-height:100%]">
       {/* Page header */}
-      <div className="[display:flex] [align-items:center] [justify-content:space-between] [padding-bottom:20px] [border-bottom:1px_solid_var(--border)] [margin-bottom:20px]">
+      <PageHeading
+        className="page-heading-row [display:flex] [align-items:center] [justify-content:space-between] [padding-bottom:20px] [border-bottom:1px_solid_var(--border)] [margin-bottom:20px]"
+        actions={
+          <>
+            <div className="[display:flex] [gap:8px]">
+              <button
+                onClick={() => setGraph(true)}
+                className="[height:32px] [padding:0_14px] [border-radius:6px] [border:1px_solid_var(--accent-border)] [background:var(--accent-bg)] [color:var(--accent)] [font-size:13px] [font-weight:500] [cursor:pointer] [letter-spacing:-0.01em] [display:flex] [align-items:center] [gap:6px] hover:[background:rgba(50,145,255,0.14)]"
+              >
+                <Network size={13} />
+                View dependency graph
+              </button>
+              <button className="[height:32px] [padding:0_14px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg-2)] [color:var(--text-1)] [font-size:13px] [font-weight:500] [cursor:pointer] [letter-spacing:-0.01em] hover:[background:var(--bg-3)]">
+                Scan dependencies
+              </button>
+            </div>
+          </>
+        }
+      >
         <div>
-          <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0]">
+          <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0]">
             Dependencies
           </h1>
           <p className="[font-size:13px] [color:var(--text-3)] [margin:4px_0_0]">
             External services and package dependencies
           </p>
         </div>
-        <div className="[display:flex] [gap:8px]">
-          <button
-            onClick={() => setGraph(true)}
-            className="[height:32px] [padding:0_14px] [border-radius:6px] [border:1px_solid_var(--accent-border)] [background:var(--accent-bg)] [color:var(--accent)] [font-size:13px] [font-weight:500] [cursor:pointer] [letter-spacing:-0.01em] [display:flex] [align-items:center] [gap:6px] hover:[background:rgba(50,145,255,0.14)]"
-          >
-            <Network size={13} />
-            View dependency graph
-          </button>
-          <button className="[height:32px] [padding:0_14px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg-2)] [color:var(--text-1)] [font-size:13px] [font-weight:500] [cursor:pointer] [letter-spacing:-0.01em] hover:[background:var(--bg-3)]">
-            Scan dependencies
-          </button>
-        </div>
-      </div>
+      </PageHeading>
 
       {/* Summary pills */}
       <div className="[display:flex] [gap:8px] [margin-bottom:20px]">
@@ -884,350 +907,82 @@ export default function Dependencies() {
         ))}
       </div>
 
-      {/* External services table */}
-      {tab === "External Services" && (
-        <div className="[background:var(--bg-2)] [border:1px_solid_var(--border)] [border-radius:8px] [overflow:hidden]">
-          <div className="[overflow-x:auto]">
-            <table className="[width:100%] [border-collapse:collapse]">
-              <thead>
-                <tr>
-                  <SortableTH
-                    label="Name"
-                    col="name"
-                    align="left"
-                    sortCol={extSort.col}
-                    sortDir={extSort.dir}
-                    onSort={extSort.onSort}
-                  />
-                  <SortableTH
-                    label="Type"
-                    col="type"
-                    align="left"
-                    sortCol={extSort.col}
-                    sortDir={extSort.dir}
-                    onSort={extSort.onSort}
-                  />
-                  <SortableTH
-                    label="Status"
-                    col="status"
-                    align="left"
-                    sortCol={extSort.col}
-                    sortDir={extSort.dir}
-                    onSort={extSort.onSort}
-                  />
-                  <SortableTH
-                    label="Latency"
-                    col="latency"
-                    align="right"
-                    sortCol={extSort.col}
-                    sortDir={extSort.dir}
-                    onSort={extSort.onSort}
-                  />
-                  <SortableTH
-                    label="Calls/min"
-                    col="callsPerMin"
-                    align="right"
-                    sortCol={extSort.col}
-                    sortDir={extSort.dir}
-                    onSort={extSort.onSort}
-                  />
-                  <SortableTH
-                    label="Error Rate"
-                    col="errRate"
-                    align="right"
-                    sortCol={extSort.col}
-                    sortDir={extSort.dir}
-                    onSort={extSort.onSort}
-                  />
-                  <SortableTH
-                    label="Last Check"
-                    col="lastCheck"
-                    align="left"
-                    sortCol={extSort.col}
-                    sortDir={extSort.dir}
-                    onSort={extSort.onSort}
-                  />
-                </tr>
-              </thead>
-              <tbody>
-                {extSort.sorted.map((d, i) => {
-                  const Icon = d.icon
-                  const latColor =
-                    d.latency > 1000
-                      ? "var(--red)"
-                      : d.latency > 300
-                        ? "var(--yellow)"
-                        : "var(--text-2)"
-                  const errColor =
-                    d.errRate > 2
-                      ? "var(--red)"
-                      : d.errRate > 0.5
-                        ? "var(--yellow)"
-                        : "var(--text-3)"
-                  const isLast = i === extSort.sorted.length - 1
-                  const td: React.CSSProperties = {
-                    ...tdStyle(d.name),
-                    borderBottom: isLast ? "none" : "1px solid var(--border)",
-                  }
-                  return (
-                    <tr
-                      key={d.name}
-                      onMouseEnter={() => setHovRow(d.name)}
-                      onMouseLeave={() => setHovRow(null)}
-                    >
-                      <td
-                        style={{
-                          ...td,
-                        }}
-                        className="[color:var(--text-1)]"
-                      >
-                        <span className="[display:flex] [align-items:center] [gap:8px]">
-                          <Icon
-                            size={13}
-                            className="[color:var(--text-3)] [flex-shrink:0]"
-                          />
-                          <span className="[font-family:Geist_Mono,_monospace] [font-size:12px] [font-weight:500]">
-                            {d.name}
-                          </span>
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          ...td,
-                        }}
-                        className="[color:var(--text-3)] [font-size:12px]"
-                      >
-                        {d.type}
-                      </td>
-                      <td
-                        style={td}
-                        className={[
-                          isLast
-                            ? "[border-bottom:none]"
-                            : "[border-bottom:1px_solid_var(--border)]",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        <StatusBadge status={d.status} />
-                      </td>
-                      <td
-                        style={{
-                          ...td,
-                          color: latColor,
-                        }}
-                        className="[text-align:right] [font-family:Geist_Mono,_monospace]"
-                      >
-                        {d.latency >= 1000
-                          ? `${(d.latency / 1000).toFixed(1)}s`
-                          : `${d.latency}ms`}
-                      </td>
-                      <td
-                        style={{
-                          ...td,
-                        }}
-                        className="[text-align:right] [font-family:Geist_Mono,_monospace] [color:var(--text-2)]"
-                      >
-                        {d.callsPerMin.toLocaleString()}
-                      </td>
-                      <td
-                        style={{
-                          ...td,
-                          color: errColor,
-                        }}
-                        className="[text-align:right] [font-family:Geist_Mono,_monospace]"
-                      >
-                        {d.errRate.toFixed(1)}%
-                      </td>
-                      <td
-                        style={{
-                          ...td,
-                        }}
-                        className="[color:var(--text-4)] [font-size:12px]"
-                      >
-                        {d.lastCheck}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Packages table */}
-      {tab === "Packages" && (
-        <div className="[background:var(--bg-2)] [border:1px_solid_var(--border)] [border-radius:8px] [overflow:hidden]">
-          <div className="[overflow-x:auto]">
-            <table className="[width:100%] [border-collapse:collapse]">
-              <thead>
-                <tr>
-                  <SortableTH
-                    label="Package"
-                    col="pkg"
-                    align="left"
-                    sortCol={pkgSort.col}
-                    sortDir={pkgSort.dir}
-                    onSort={pkgSort.onSort}
-                  />
-                  <SortableTH
-                    label="Version"
-                    col="version"
-                    align="left"
-                    sortCol={pkgSort.col}
-                    sortDir={pkgSort.dir}
-                    onSort={pkgSort.onSort}
-                  />
-                  <SortableTH
-                    label="Language"
-                    col="lang"
-                    align="left"
-                    sortCol={pkgSort.col}
-                    sortDir={pkgSort.dir}
-                    onSort={pkgSort.onSort}
-                  />
-                  <SortableTH
-                    label="Vulnerabilities"
-                    col="vulns"
-                    align="right"
-                    sortCol={pkgSort.col}
-                    sortDir={pkgSort.dir}
-                    onSort={pkgSort.onSort}
-                  />
-                  <SortableTH
-                    label="Severity"
-                    col="severity"
-                    align="left"
-                    sortCol={pkgSort.col}
-                    sortDir={pkgSort.dir}
-                    onSort={pkgSort.onSort}
-                  />
-                  <SortableTH
-                    label="Fix Available"
-                    col="fix"
-                    align="left"
-                    sortCol={pkgSort.col}
-                    sortDir={pkgSort.dir}
-                    onSort={pkgSort.onSort}
-                  />
-                  <SortableTH
-                    label="CVE"
-                    col="cve"
-                    align="left"
-                    sortCol={pkgSort.col}
-                    sortDir={pkgSort.dir}
-                    onSort={pkgSort.onSort}
-                  />
-                </tr>
-              </thead>
-              <tbody>
-                {pkgSort.sorted.map((p, i) => {
-                  const Icon = p.icon
-                  const isLast = i === pkgSort.sorted.length - 1
-                  const td: React.CSSProperties = {
-                    ...tdStyle(p.pkg),
-                    borderBottom: isLast ? "none" : "1px solid var(--border)",
-                  }
-                  return (
-                    <tr
-                      key={p.pkg}
-                      onMouseEnter={() => setHovRow(p.pkg)}
-                      onMouseLeave={() => setHovRow(null)}
-                    >
-                      <td
-                        style={{
-                          ...td,
-                        }}
-                        className="[color:var(--text-1)]"
-                      >
-                        <span className="[display:flex] [align-items:center] [gap:8px]">
-                          <Icon
-                            size={13}
-                            className="[color:var(--text-3)] [flex-shrink:0]"
-                          />
-                          <span className="[font-family:Geist_Mono,_monospace] [font-size:12px] [font-weight:500]">
-                            {p.pkg}
-                          </span>
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          ...td,
-                        }}
-                        className="[font-family:Geist_Mono,_monospace] [font-size:11px] [color:var(--text-4)]"
-                      >
-                        {p.version}
-                      </td>
-                      <td
-                        style={td}
-                        className={[
-                          isLast
-                            ? "[border-bottom:none]"
-                            : "[border-bottom:1px_solid_var(--border)]",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        <LangBadge lang={p.lang} />
-                      </td>
-                      <td
-                        style={{
-                          ...td,
-                        }}
-                        className={[
-                          "[text-align:right] [font-family:Geist_Mono,_monospace]",
-                          p.vulns > 0
-                            ? "[color:var(--red)]"
-                            : "[color:var(--text-4)]",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        {p.vulns > 0 ? p.vulns : "—"}
-                      </td>
-                      <td
-                        style={td}
-                        className={[
-                          isLast
-                            ? "[border-bottom:none]"
-                            : "[border-bottom:1px_solid_var(--border)]",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        <SeverityBadge severity={p.severity} />
-                      </td>
-                      <td
-                        style={{
-                          ...td,
-                        }}
-                        className="[font-family:Geist_Mono,_monospace] [font-size:11px]"
-                      >
-                        {p.fix ? (
-                          <span className="[color:var(--green)]">{p.fix}</span>
-                        ) : (
-                          <span className="[color:var(--text-4)]">
-                            Up to date
-                          </span>
-                        )}
-                      </td>
-                      <td
-                        style={{
-                          ...td,
-                        }}
-                        className="[font-family:Geist_Mono,_monospace] [font-size:10px] [color:var(--text-4)]"
-                      >
-                        {p.cve ?? "—"}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        {tab === "External Services" ? (
+          <SherlockGrid
+            rowData={extSort.sorted}
+            getRowId={({ data }) => data.name}
+            domLayout="autoHeight"
+            showPagination={false}
+            columnDefs={[
+              { field: "name", headerName: "Name", minWidth: 190, flex: 1 },
+              { field: "type", headerName: "Type", minWidth: 130 },
+              {
+                field: "status",
+                headerName: "Status",
+                minWidth: 110,
+                cellRenderer: ({ value }) => <StatusBadge status={value} />,
+              },
+              {
+                field: "latency",
+                headerName: "Latency",
+                minWidth: 110,
+                valueFormatter: ({ value }) =>
+                  value >= 1000 ? `${(value / 1000).toFixed(1)}s` : `${value}ms`,
+              },
+              {
+                field: "callsPerMin",
+                headerName: "Calls/min",
+                minWidth: 110,
+                valueFormatter: ({ value }) => value.toLocaleString(),
+              },
+              {
+                field: "errRate",
+                headerName: "Error rate",
+                minWidth: 110,
+                valueFormatter: ({ value }) => `${value.toFixed(1)}%`,
+              },
+              { field: "lastCheck", headerName: "Last check", minWidth: 120 },
+            ]}
+          />
+        ) : (
+          <SherlockGrid
+            rowData={pkgSort.sorted}
+            getRowId={({ data }) => data.pkg}
+            domLayout="autoHeight"
+            showPagination={false}
+            columnDefs={[
+              { field: "pkg", headerName: "Package", minWidth: 210, flex: 1 },
+              { field: "version", headerName: "Version", minWidth: 110 },
+              {
+                field: "lang",
+                headerName: "Language",
+                minWidth: 120,
+                cellRenderer: ({ value }) => <LangBadge lang={value} />,
+              },
+              { field: "vulns", headerName: "Vulnerabilities", minWidth: 130 },
+              {
+                field: "severity",
+                headerName: "Severity",
+                minWidth: 110,
+                cellRenderer: ({ value }) => <SeverityBadge severity={value} />,
+              },
+              {
+                field: "fix",
+                headerName: "Fix available",
+                minWidth: 130,
+                valueFormatter: ({ value }) => value || "Up to date",
+              },
+              {
+                field: "cve",
+                headerName: "CVE",
+                minWidth: 150,
+                valueFormatter: ({ value }) => value || "—",
+              },
+            ]}
+          />
+        )}
+      </div>
 
       {/* Graph modal */}
       {graphOpen && <GraphModal onClose={() => setGraph(false)} />}

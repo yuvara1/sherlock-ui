@@ -1,8 +1,11 @@
 node_modules/
 dist/
 build/
+backend/target/
+backend/*/target/
 .cache/
 .env*
+!.env.example
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo

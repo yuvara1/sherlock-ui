@@ -1,3 +1,7 @@
+import PageHeading from "@/components/workspace/PageHeading"
+import PageInsights from "@/components/workspace/PageInsights"
+import { SherlockGrid } from "@/components/ui/SherlockGrid"
+import { Button as SortButton } from "@/components/ui/button"
 import { useState, useMemo, useCallback } from "react"
 import {
   Plus,
@@ -306,7 +310,11 @@ function CriticalDot() {
     </span>
   )
 }
-function SortIconEl({ active, dir }: { active: boolean dir: SortDir }) {
+interface SortIconProps {
+  active: boolean
+  dir: SortDir
+}
+function SortIconEl({ active, dir }: SortIconProps) {
   if (!active) return <ChevronsUpDown size={10} className="[opacity:0.4]" />
   if (dir === "asc") return <ChevronUp size={10} />
   if (dir === "desc") return <ChevronDown size={10} />
@@ -327,7 +335,10 @@ function SortableGridHeader({
 }) {
   const active = sortCol === col
   return (
-    <div
+    <SortButton
+      variant="ghost"
+      size="sm"
+      aria-label={`Sort by ${label}`}
       onClick={() => onSort(col)}
       style={{
         textTransform: "uppercase" as const,
@@ -341,7 +352,7 @@ function SortableGridHeader({
         .join(" ")}
     >
       {label} <SortIconEl active={active} dir={sortDir} />
-    </div>
+    </SortButton>
   )
 }
 function SevBadge({ severity }: { severity: Severity }) {
@@ -353,7 +364,7 @@ function SevBadge({ severity }: { severity: Severity }) {
         background: c.bg,
         border: `1px solid ${c.border}`,
       }}
-      className="[display:inline-flex] [align-items:center] [justify-self:start] [height:20px] [padding:0_7px] [border-radius:4px] [font-size:11px] [font-weight:500]"
+      className="sherlock-grid-chip [display:inline-flex] [align-items:center] [justify-self:start] [padding:2px_7px] [border-radius:4px] [font-size:11px] [font-weight:500]"
     >
       {severity}
     </span>
@@ -707,25 +718,31 @@ export default function Alerts() {
   ]
   const FIRE_WIDTHS = ["1fr", "160px", "96px", "96px", "90px", "140px", "160px"]
   return (
-    <div className="[height:100%] [display:flex] [flex-direction:column] [overflow:hidden] [font-family:Geist,_sans-serif] [font-size:13px] [color:var(--text-1)]">
+    <div className="app-page [height:100%] [display:flex] [flex-direction:column] [overflow:hidden] [font-family:Geist,_sans-serif] [font-size:13px] [color:var(--text-1)]">
       {/* Page header */}
-      <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:24px_32px_0] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [background:var(--bg)]">
-        <div className="[display:flex] [align-items:center] [justify-content:space-between] [margin-bottom:20px]">
+      <div className="page-header-region max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:16px_20px_0] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [background:var(--bg)]">
+        <PageHeading
+          className="page-heading-row [display:flex] [align-items:center] [justify-content:space-between] [margin-bottom:20px]"
+          actions={
+            <>
+              <button
+                onClick={() => setOpen(true)}
+                className="[display:flex] [align-items:center] [gap:6px] [height:32px] [padding:0_14px] [border-radius:6px] [border:none] [background:var(--text-1)] [color:var(--bg)] [font-size:13px] [font-weight:500] [cursor:pointer]"
+              >
+                <Plus size={13} /> New rule
+              </button>
+            </>
+          }
+        >
           <div>
-            <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0_0_4px]">
+            <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0_0_4px]">
               Alerts
             </h1>
             <p className="[font-size:13px] [color:var(--text-3)] [margin:0]">
               Alert rules, notification channels, and firing alerts
             </p>
           </div>
-          <button
-            onClick={() => setOpen(true)}
-            className="[display:flex] [align-items:center] [gap:6px] [height:32px] [padding:0_14px] [border-radius:6px] [border:none] [background:var(--text-1)] [color:var(--bg)] [font-size:13px] [font-weight:500] [cursor:pointer]"
-          >
-            <Plus size={13} /> New rule
-          </button>
-        </div>
+        </PageHeading>
 
         {/* Stats */}
         <div className="[display:flex] [gap:12px] [margin-bottom:20px]">
@@ -773,342 +790,115 @@ export default function Alerts() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="[flex:1] [overflow-y:auto] [background:var(--bg)]">
-        {/* Rules tab */}
+      <div className="flex-1 bg-background">
         {tab === "rules" && (
-          <>
-            {/* Filter bar */}
-            <div className="[display:flex] [gap:8px] [padding:16px_32px] [border-bottom:1px_solid_var(--border)]">
-              <div className="[position:relative] [display:flex] [align-items:center]">
-                <Search
-                  size={13}
-                  className="[position:absolute] [left:9px] [color:var(--text-4)] [pointer-events:none]"
-                />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search rules..."
-                  className="[height:32px] [padding:0_10px_0_30px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg)] [color:var(--text-1)] [font-size:13px] [outline:none] [width:200px] [font-family:Geist,_sans-serif]"
-                />
-              </div>
-              <SherlockSelect
-                value={sevFilter}
-                onChange={setSevFilter}
-                options={[
-                  { value: "all", label: "All severities" },
-                  { value: "critical", label: "Critical" },
-                  { value: "error", label: "Error" },
-                  { value: "warning", label: "Warning" },
-                  { value: "info", label: "Info" },
-                ]}
-                minWidth={140}
+          <div className="flex gap-2 border-b border-border px-8 py-4">
+            <div className="relative flex items-center">
+              <Search size={13} className="pointer-events-none absolute left-2.5 text-[var(--text-4)]" />
+              <input
+                aria-label="Search rules"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search rules..."
+                className="h-8 w-52 rounded-md border border-border bg-background pl-8 pr-2 text-sm outline-none"
               />
             </div>
-
-            {/* Rules table */}
-            <div className="[min-width:900px] [overflow-x:auto]">
-              {/* Header */}
-              <div
-                style={{
-                  gridTemplateColumns: RULE_WIDTHS.join(" "),
-                }}
-                className="[display:grid] [padding:0_32px] [height:36px] [align-items:center] [border-bottom:1px_solid_var(--border)] [background:var(--bg-2)] [position:sticky] [top:0] [z-index:5]"
-              >
-                <SortableGridHeader
-                  label="Name"
-                  col="name"
-                  sortCol={ruleSortCol}
-                  sortDir={ruleSortDir}
-                  onSort={handleRuleSort}
-                />
-                <SortableGridHeader
-                  label="Metric"
-                  col="metric"
-                  sortCol={ruleSortCol}
-                  sortDir={ruleSortDir}
-                  onSort={handleRuleSort}
-                />
-                <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)]">
-                  Cond.
-                </div>
-                <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)]">
-                  Threshold
-                </div>
-                <SortableGridHeader
-                  label="Severity"
-                  col="severity"
-                  sortCol={ruleSortCol}
-                  sortDir={ruleSortDir}
-                  onSort={handleRuleSort}
-                />
-                <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)]">
-                  Channel
-                </div>
-                <SortableGridHeader
-                  label="Status"
-                  col="status"
-                  sortCol={ruleSortCol}
-                  sortDir={ruleSortDir}
-                  onSort={handleRuleSort}
-                />
-                <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)]">
-                  Last triggered
-                </div>
-                <div />
-              </div>
-
-              {filteredRules.map((rule, i) => (
-                <motion.div
-                  key={rule.id}
-                  initial={{ opacity: 0, y: 3 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.015, duration: 0.15 }}
-                  style={{
-                    gridTemplateColumns: RULE_WIDTHS.join(" "),
-                  }}
-                  className={[
-                    [
-                      "[display:grid] [padding:0_32px] [height:40px] [align-items:center] [border-bottom:1px_solid_var(--border)] [cursor:pointer] [transition:background_0.1s]",
-                      rule.enabled ? "[opacity:1]" : "[opacity:0.55]",
-                    ]
-                      .filter(Boolean)
-                      .join(" "),
-                    "hover:[background:var(--bg-3)]",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  <div className="[display:flex] [align-items:center] [gap:7px] [overflow:hidden] [padding-right:16px]">
-                    <Bell
-                      size={12}
-                      className="[color:var(--text-4)] [flex-shrink:0]"
-                    />
-                    <span className="[font-size:13px] [font-weight:500] [color:var(--text-1)] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap]">
-                      {rule.name}
-                    </span>
-                  </div>
-                  <span className="[font-family:Geist_Mono,_monospace] [font-size:12px] [color:var(--text-3)]">
-                    {rule.metric}
-                  </span>
-                  <span className="[font-family:Geist_Mono,_monospace] [font-size:12px] [color:var(--text-2)]">
-                    {rule.condition}
-                  </span>
-                  <span className="[font-family:Geist_Mono,_monospace] [font-size:12px] [color:var(--text-2)] [font-weight:600]">
-                    {rule.threshold}
-                  </span>
-                  <SevBadge severity={rule.severity} />
-                  <ChannelIcon ch={rule.channel} />
-                  <Toggle
-                    enabled={rule.enabled}
-                    onChange={() => toggle(rule.id)}
-                  />
-                  <span className="[font-family:Geist_Mono,_monospace] [font-size:12px] [color:var(--text-4)]">
-                    {rule.lastTriggered}
-                  </span>
-                  <div className="[display:flex] [gap:4px] [justify-content:flex-end]">
+            <SherlockSelect
+              value={sevFilter}
+              onChange={setSevFilter}
+              options={[
+                { value: "all", label: "All severities" },
+                { value: "critical", label: "Critical" },
+                { value: "error", label: "Error" },
+                { value: "warning", label: "Warning" },
+                { value: "info", label: "Info" },
+              ]}
+              minWidth={140}
+            />
+          </div>
+        )}
+        <div className="incident-grid--inset h-[var(--workspace-panel-max-height)] overflow-hidden border-y border-border">
+          {tab === "rules" ? (
+            <SherlockGrid
+              rowData={filteredRules}
+              getRowId={({ data }) => data.id}
+              columnDefs={[
+                { field: "name", headerName: "Name", minWidth: 220, flex: 1 },
+                { field: "metric", headerName: "Metric", minWidth: 150 },
+                { field: "condition", headerName: "Condition", width: 100 },
+                { field: "threshold", headerName: "Threshold", width: 110 },
+                {
+                  field: "severity",
+                  headerName: "Severity",
+                  width: 120,
+                  cellRenderer: ({ value }) => <SevBadge severity={value} />,
+                },
+                { field: "channel", headerName: "Channel", width: 120 },
+                {
+                  field: "enabled",
+                  headerName: "Status",
+                  width: 110,
+                  cellRenderer: ({ data }) => (
+                    <Toggle enabled={data.enabled} onChange={() => toggle(data.id)} />
+                  ),
+                },
+                { field: "lastTriggered", headerName: "Last triggered", width: 130 },
+                {
+                  headerName: "Actions",
+                  width: 90,
+                  sortable: false,
+                  cellRenderer: ({ data }) => (
                     <button
-                      onClick={() => deleteRule(rule.id)}
-                      className="[display:flex] [padding:4px_6px] [border-radius:5px] [border:1px_solid_var(--border)] [background:transparent] [color:var(--text-4)] [cursor:pointer]"
+                      aria-label={`Delete ${data.name}`}
+                      onClick={() => deleteRule(data.id)}
+                      className="rounded border border-border p-1.5 text-[var(--text-4)]"
                     >
                       <Trash2 size={12} />
                     </button>
-                  </div>
-                </motion.div>
-              ))}
-
-              {filteredRules.length === 0 && (
-                <div className="[padding:48px_32px] [display:flex] [flex-direction:column] [align-items:center] [gap:12px] [color:var(--text-4)]">
-                  <BellOff size={24} strokeWidth={1.5} />
-                  <p className="[font-size:13px] [margin:0]">
-                    No rules match these filters.
-                  </p>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Firing tab */}
-        {tab === "firing" && (
-          <div className="[min-width:900px] [overflow-x:auto]">
-            {/* Header */}
-            <div
-              style={{
-                gridTemplateColumns: FIRE_WIDTHS.join(" "),
-              }}
-              className="[display:grid] [padding:0_32px] [height:36px] [align-items:center] [border-bottom:1px_solid_var(--border)] [background:var(--bg-2)] [position:sticky] [top:0] [z-index:5]"
-            >
-              <SortableGridHeader
-                label="Alert"
-                col="name"
-                sortCol={fireSortCol}
-                sortDir={fireSortDir}
-                onSort={handleFireSort}
-              />
-              <SortableGridHeader
-                label="Service"
-                col="service"
-                sortCol={fireSortCol}
-                sortDir={fireSortDir}
-                onSort={handleFireSort}
-              />
-              <SortableGridHeader
-                label="Triggered"
-                col="triggered"
-                sortCol={fireSortCol}
-                sortDir={fireSortDir}
-                onSort={handleFireSort}
-              />
-              <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)]">
-                Duration
-              </div>
-              <SortableGridHeader
-                label="Severity"
-                col="severity"
-                sortCol={fireSortCol}
-                sortDir={fireSortDir}
-                onSort={handleFireSort}
-              />
-              <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)]">
-                Assigned
-              </div>
-              <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)]">
-                Actions
-              </div>
-            </div>
-
-            {sortedFiring.map((f, i) => {
-              const sc = sevConfig(f.severity)
-              const initials = f.assigned
-                .split(".")
-                .map((p) => p[0]?.toUpperCase())
-                .join("")
-                .slice(0, 2)
-              const hue =
-                (f.assigned.charCodeAt(0) * 53 +
-                  (f.assigned.charCodeAt(1) ?? 0) * 19) %
-                360
-              return (
-                <motion.div
-                  key={f.id}
-                  initial={{ opacity: 0, y: 3 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.02, duration: 0.15 }}
-                  style={{
-                    gridTemplateColumns: FIRE_WIDTHS.join(" "),
-                    background: f.silenced
-                      ? "transparent"
-                      : f.severity === "critical"
-                        ? "var(--red-bg)"
-                        : "transparent",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!f.silenced)
-                      (e.currentTarget as HTMLDivElement).style.background =
-                        "var(--bg-3)"
-                  }}
-                  onMouseLeave={(e) =>
-                    ((e.currentTarget as HTMLDivElement).style.background =
-                      f.silenced
-                        ? "transparent"
-                        : f.severity === "critical"
-                          ? "var(--red-bg)"
-                          : "transparent")
-                  }
-                  className={[
-                    "[display:grid] [padding:0_32px] [height:48px] [align-items:center] [border-bottom:1px_solid_var(--border)] [transition:background_0.1s]",
-                    f.silenced ? "[opacity:0.5]" : "[opacity:1]",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  {/* Alert name */}
-                  <div className="[display:flex] [align-items:center] [gap:8px] [overflow:hidden] [padding-right:16px]">
-                    {!f.silenced && f.severity === "critical" ? (
-                      <CriticalDot />
-                    ) : (
-                      !f.silenced && (
-                        <span
-                          style={{
-                            background: sc.color,
-                          }}
-                          className="[width:6px] [height:6px] [border-radius:50%] [flex-shrink:0] [animation:pulse_1.5s_ease-in-out_infinite]"
-                        />
-                      )
-                    )}
-                    <BellRing
-                      size={12}
-                      style={{
-                        color: sc.color,
-                      }}
-                      className="[flex-shrink:0]"
-                    />
-                    <span className="[font-size:13px] [font-weight:500] [color:var(--text-1)] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap]">
-                      {f.name}
-                    </span>
-                    {f.acked && (
-                      <span className="[font-size:10px] [padding:1px_6px] [border-radius:3px] [background:var(--bg-3)] [color:var(--text-4)] [border:1px_solid_var(--border)] [flex-shrink:0]">
-                        acked
-                      </span>
-                    )}
-                  </div>
-
-                  <span className="[font-size:12px] [color:var(--text-2)] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap]">
-                    {f.service}
-                  </span>
-                  <span className="[font-family:Geist_Mono,_monospace] [font-size:12px] [color:var(--text-3)]">
-                    {f.triggered}
-                  </span>
-                  <span
-                    style={{
-                      color: sc.color,
-                    }}
-                    className="[font-family:Geist_Mono,_monospace] [font-size:12px]"
-                  >
-                    {f.duration}
-                  </span>
-                  <SevBadge severity={f.severity} />
-
-                  {/* Assigned */}
-                  <div className="[display:flex] [align-items:center] [gap:7px]">
-                    <span
-                      style={{
-                        background: `hsl(${hue},55%,40%)`,
-                      }}
-                      className="[width:22px] [height:22px] [border-radius:50%] [flex-shrink:0] [display:flex] [align-items:center] [justify-content:center] [font-size:9px] [font-weight:700] [color:#fff]"
-                    >
-                      {initials}
-                    </span>
-                    <span className="[font-size:12px] [color:var(--text-2)]">
-                      {f.assigned}
-                    </span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="[display:flex] [gap:6px]">
-                    {!f.acked && (
-                      <button
-                        onClick={() => ack(f.id)}
-                        className="[display:flex] [align-items:center] [gap:5px] [height:26px] [padding:0_10px] [border-radius:5px] [border:1px_solid_var(--border)] [background:transparent] [color:var(--text-2)] [font-size:11px] [font-weight:500] [cursor:pointer]"
-                      >
-                        <Check size={11} /> Acknowledge
-                      </button>
-                    )}
-                    {!f.silenced && (
-                      <button
-                        onClick={() => silence(f.id)}
-                        className="[display:flex] [align-items:center] [gap:5px] [height:26px] [padding:0_10px] [border-radius:5px] [border:1px_solid_var(--border)] [background:transparent] [color:var(--text-2)] [font-size:11px] [cursor:pointer]"
-                      >
-                        <BellOff size={11} /> Silence
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        )}
+                  ),
+                },
+              ]}
+              overlayNoRowsTemplate="No rules match these filters."
+            />
+          ) : (
+            <SherlockGrid
+              rowData={sortedFiring}
+              getRowId={({ data }) => data.id}
+              columnDefs={[
+                { field: "name", headerName: "Alert", minWidth: 220, flex: 1 },
+                { field: "service", headerName: "Service", minWidth: 160 },
+                { field: "triggered", headerName: "Triggered", width: 120 },
+                { field: "duration", headerName: "Duration", width: 110 },
+                {
+                  field: "severity",
+                  headerName: "Severity",
+                  width: 120,
+                  cellRenderer: ({ value }) => <SevBadge severity={value} />,
+                },
+                { field: "assigned", headerName: "Assigned", width: 140 },
+                {
+                  headerName: "Actions",
+                  minWidth: 210,
+                  sortable: false,
+                  cellRenderer: ({ data }) => (
+                    <div className="flex h-full items-center gap-2">
+                      {!data.acked && (
+                        <button onClick={() => ack(data.id)} className="rounded border border-border px-2 py-1 text-xs">
+                          Acknowledge
+                        </button>
+                      )}
+                      {!data.silenced && (
+                        <button onClick={() => silence(data.id)} className="rounded border border-border px-2 py-1 text-xs">
+                          Silence
+                        </button>
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          )}
+        </div>
       </div>
 
       <CreateAlertRuleDialog
@@ -1117,6 +907,38 @@ export default function Alerts() {
         onCreate={(r) => {
           setRules((prev) => [r, ...prev])
         }}
+      />
+
+      <PageInsights
+        exportRows={tab === "rules" ? filteredRules : sortedFiring}
+        page="alerts"
+        segments={
+          tab === "rules"
+            ? [
+                {
+                  label: "Enabled rules",
+                  count: filteredRules.filter((item) => item.enabled).length,
+                  tone: "success",
+                },
+                {
+                  label: "Disabled rules",
+                  count: filteredRules.filter((item) => !item.enabled).length,
+                  tone: "neutral",
+                },
+              ]
+            : [
+                {
+                  label: "Active signals",
+                  count: sortedFiring.filter((item) => !item.silenced).length,
+                  tone: "danger",
+                },
+                {
+                  label: "Silenced signals",
+                  count: sortedFiring.filter((item) => item.silenced).length,
+                  tone: "neutral",
+                },
+              ]
+        }
       />
     </div>
   )

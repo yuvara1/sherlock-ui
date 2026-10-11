@@ -1,3 +1,7 @@
+import PageHeading from "@/components/workspace/PageHeading"
+import PageInsights from "@/components/workspace/PageInsights"
+import { SherlockGrid } from "@/components/ui/SherlockGrid"
+import { Button as SortButton } from "@/components/ui/button"
 import { useState, useMemo } from "react"
 import {
   GitBranch,
@@ -571,7 +575,10 @@ export default function Deployments() {
   }) {
     const active = sortCol === col
     return (
-      <div
+      <SortButton
+        variant="ghost"
+        size="sm"
+        aria-label={`Sort by ${label}`}
         onClick={() => onSort(col)}
         style={{
           ...style,
@@ -600,27 +607,33 @@ export default function Deployments() {
         ) : (
           <ChevronsUpDown size={11} className="[opacity:0.35]" />
         )}
-      </div>
+      </SortButton>
     )
   }
   return (
-    <div className="[height:100%] [display:flex] [flex-direction:column] [overflow:hidden] [font-family:Geist,_sans-serif] [font-size:13px] [color:var(--text-1)]">
+    <div className="app-page [height:100%] [display:flex] [flex-direction:column] [overflow:hidden] [font-family:Geist,_sans-serif] [font-size:13px] [color:var(--text-1)]">
       {/* Page header */}
-      <div className="max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:24px_32px_20px] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [background:var(--bg)]">
-        <div className="[display:flex] [align-items:center] [justify-content:space-between] [margin-bottom:20px]">
+      <div className="page-header-region max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:16px_20px_14px] [border-bottom:1px_solid_var(--border)] [flex-shrink:0] [background:var(--bg)]">
+        <PageHeading
+          className="page-heading-row [display:flex] [align-items:center] [justify-content:space-between] [margin-bottom:20px]"
+          actions={
+            <>
+              <button className="[display:flex] [align-items:center] [gap:6px] [height:32px] [padding:0_14px] [border-radius:6px] [border:none] [background:var(--text-1)] [color:var(--bg)] [font-size:13px] [font-weight:500] [cursor:pointer]">
+                <Zap size={13} />
+                Trigger deploy
+              </button>
+            </>
+          }
+        >
           <div>
-            <h1 className="[font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0_0_4px]">
+            <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0_0_4px]">
               Deployments
             </h1>
             <p className="[font-size:13px] [color:var(--text-3)] [margin:0]">
               All deployment history across services and environments
             </p>
           </div>
-          <button className="[display:flex] [align-items:center] [gap:6px] [height:32px] [padding:0_14px] [border-radius:6px] [border:none] [background:var(--text-1)] [color:var(--bg)] [font-size:13px] [font-weight:500] [cursor:pointer]">
-            <Zap size={13} />
-            Trigger deploy
-          </button>
-        </div>
+        </PageHeading>
 
         {/* Stats */}
         <div className="[display:flex] [gap:12px] [margin-bottom:20px]">
@@ -650,6 +663,7 @@ export default function Deployments() {
               className="[position:absolute] [left:9px] [color:var(--text-4)] [pointer-events:none]"
             />
             <input
+              aria-label="Search deployments"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search deployments..."
@@ -686,156 +700,111 @@ export default function Deployments() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto max-w-full [flex:1] [overflow-y:auto] [background:var(--bg)]">
-        {/* Header */}
-        <div
-          style={{
-            gridTemplateColumns: COL_WIDTHS.join(" "),
-          }}
-          className="[display:grid] [min-width:800px] [padding:0_32px] [height:36px] [align-items:center] [border-bottom:1px_solid_var(--border)] [position:sticky] [top:0] [background:var(--bg-2)] [z-index:5]"
-        >
-          <div className="[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)] [user-select:none]">
-            Build ID
-          </div>
-          <SortableTH label="Service" col="service" />
-          <div
-            className={[
-              ["[display:flex] [align-items:center] [gap:4px]"]
-                .filter(Boolean)
-                .join(" "),
-              "[font-size:11px] [font-weight:500] [text-transform:uppercase] [letter-spacing:0.04em] [color:var(--text-3)] [user-select:none]",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            <GitBranch size={10} className="[opacity:0.5]" /> Branch / Commit
-          </div>
-          <SortableTH label="Environment" col="env" />
-          <SortableTH label="Status" col="status" />
-          <SortableTH label="Duration" col="dur" />
-          <SortableTH label="Author" col="author" />
-          <SortableTH label="Created" col="created" />
-        </div>
-
-        {filtered.map((dep, i) => {
-          const sc = statusConfig(dep.status)
-          const ec = envConfig(dep.env)
-          const initials = dep.author
-            .split(".")
-            .map((p) => p[0]?.toUpperCase())
-            .join("")
-            .slice(0, 2)
-          const running = dep.status === "in-progress"
-          return (
-            <motion.div
-              key={dep.id}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.015, duration: 0.18 }}
-              style={{
-                gridTemplateColumns: COL_WIDTHS.join(" "),
-              }}
-              className="[display:grid] [min-width:800px] [padding:0_32px] [height:40px] [align-items:center] [border-bottom:1px_solid_var(--border)] [cursor:pointer] hover:[background:var(--bg-3)]"
-            >
-              {/* Build ID */}
-              <span className="[font-family:Geist_Mono,_monospace] [font-size:12px] [color:var(--text-2)] [letter-spacing:0.02em]">
-                {dep.commit}
-              </span>
-
-              {/* Service */}
-              <span className="[font-size:13px] [font-weight:500] [color:var(--text-1)] [overflow:hidden] [text-overflow:ellipsis] [white-space:nowrap] [padding-right:8px]">
-                {dep.service}
-              </span>
-
-              {/* Branch / Commit */}
-              <div className="[min-width:0] [padding-right:16px]">
-                <div className="[display:flex] [align-items:center] [gap:5px] [margin-bottom:2px]">
-                  <GitBranch
-                    size={10}
-                    className="[color:var(--text-4)] [flex-shrink:0]"
-                  />
-                  <span className="[font-size:11px] [font-family:Geist_Mono,_monospace] [color:var(--text-3)] [white-space:nowrap] [overflow:hidden] [text-overflow:ellipsis]">
-                    {dep.branch}
+      <div className="incident-grid--inset h-[var(--workspace-panel-max-height)] flex-none overflow-hidden border-y border-border">
+        <SherlockGrid
+          rowData={filtered}
+          getRowId={({ data }) => data.id}
+          columnDefs={[
+            {
+              field: "commit",
+              headerName: "Build ID",
+              width: 110,
+              cellClass: "font-mono text-xs",
+            },
+            { field: "service", headerName: "Service", minWidth: 170, flex: 1 },
+            {
+              field: "branch",
+              headerName: "Branch / commit",
+              minWidth: 240,
+              flex: 1.4,
+              cellRenderer: ({ data }) => (
+                <div className="flex h-full min-w-0 flex-col justify-center">
+                  <span className="truncate font-mono text-xs text-[var(--text-2)]">
+                    {data.branch}
+                  </span>
+                  <span className="truncate text-xs text-[var(--text-4)]">
+                    {data.msg}
                   </span>
                 </div>
-                <div className="[display:flex] [align-items:center] [gap:5px]">
-                  <GitCommit
-                    size={10}
-                    className="[color:var(--text-4)] [flex-shrink:0]"
-                  />
-                  <span className="[font-size:11px] [color:var(--text-3)] [white-space:nowrap] [overflow:hidden] [text-overflow:ellipsis]">
-                    {dep.msg}
+              ),
+            },
+            {
+              field: "env",
+              headerName: "Environment",
+              width: 130,
+              cellRenderer: ({ value }) => {
+                const config = envConfig(value)
+                return (
+                  <span
+                    style={{
+                      color: config.color,
+                      background: config.bg,
+                      borderColor: config.border,
+                    }}
+                    className="sherlock-grid-chip inline-flex rounded border px-2 py-0.5 text-xs font-medium"
+                  >
+                    {value}
                   </span>
-                </div>
-              </div>
-
-              {/* Environment */}
-              <span
-                style={{
-                  color: ec.color,
-                  background: ec.bg,
-                  border: `1px solid ${ec.border}`,
-                }}
-                className="[display:inline-flex] [align-items:center] [height:20px] [padding:0_7px] [border-radius:4px] [font-size:11px] [font-weight:500] [width:fit-content]"
-              >
-                {dep.env}
-              </span>
-
-              {/* Status */}
-              <div className="[display:flex] [align-items:center] [gap:6px]">
-                <StatusIcon status={dep.status} />
-                <span
-                  style={{
-                    color: sc.color,
-                  }}
-                  className="[font-size:12px] [font-weight:500]"
-                >
-                  {sc.label}
+                )
+              },
+            },
+            {
+              field: "status",
+              headerName: "Status",
+              width: 130,
+              cellRenderer: ({ value }) => (
+                <span className="flex h-full items-center gap-1.5">
+                  <StatusIcon status={value} />
+                  {statusConfig(value).label}
                 </span>
-              </div>
-
-              {/* Duration */}
-              <span
-                className={[
-                  "[font-family:Geist_Mono,_monospace] [font-size:12px]",
-                  running ? "[color:var(--accent)]" : "[color:var(--text-3)]",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                {dep.dur}
-              </span>
-
-              {/* Author */}
-              <div className="[display:flex] [align-items:center] [gap:7px]">
-                <span
-                  style={{
-                    background: avatarColor(dep.author),
-                  }}
-                  className="[width:22px] [height:22px] [border-radius:50%] [flex-shrink:0] [display:flex] [align-items:center] [justify-content:center] [font-size:9px] [font-weight:700] [color:#fff]"
-                >
-                  {initials}
-                </span>
-                <span className="[font-size:12px] [color:var(--text-2)] [white-space:nowrap]">
-                  {dep.author}
-                </span>
-              </div>
-
-              {/* Created */}
-              <span className="[font-family:Geist_Mono,_monospace] [font-size:12px] [color:var(--text-4)]">
-                {dep.created}
-              </span>
-            </motion.div>
-          )
-        })}
-
-        {filtered.length === 0 && (
-          <div className="[padding:48px_32px] [text-align:center] [color:var(--text-4)] [font-size:13px]">
-            No deployments match the current filters.
-          </div>
-        )}
+              ),
+            },
+            {
+              field: "dur",
+              headerName: "Duration",
+              width: 110,
+              cellClass: "font-mono text-xs",
+            },
+            { field: "author", headerName: "Author", width: 140 },
+            {
+              field: "created",
+              headerName: "Created",
+              width: 110,
+              cellClass: "font-mono text-xs text-[var(--text-4)]",
+            },
+          ]}
+          overlayNoRowsTemplate="No deployments match the current filters."
+        />
       </div>
+
+      <PageInsights
+        exportRows={filtered}
+        page="deployments"
+        segments={[
+          {
+            label: "Successful",
+            count: filtered.filter((item) => item.status === "success").length,
+            tone: "success",
+          },
+          {
+            label: "Failed",
+            count: filtered.filter((item) => item.status === "failed").length,
+            tone: "danger",
+          },
+          {
+            label: "In progress",
+            count: filtered.filter((item) => item.status === "in-progress")
+              .length,
+            tone: "info",
+          },
+          {
+            label: "Cancelled",
+            count: filtered.filter((item) => item.status === "cancelled")
+              .length,
+            tone: "neutral",
+          },
+        ]}
+      />
     </div>
   )
 }

@@ -14,37 +14,38 @@ import {
   ChevronsRight,
 } from "lucide-react"
 import { useTheme } from "@/lib/theme"
+import { useReducedMotion } from "motion/react"
 ModuleRegistry.registerModules([AllCommunityModule])
 const LIGHT = {
-  backgroundColor: "#ffffff",
-  foregroundColor: "#111111",
-  borderColor: "#e5e7eb",
-  columnHeaderBackgroundColor: "#f9fafb",
-  columnHeaderTextColor: "#6b7280",
-  rowHoverColor: "#f3f4f6",
-  selectedRowBackgroundColor: "#eff6ff",
-  oddRowBackgroundColor: "#ffffff",
+  backgroundColor: "var(--bg)",
+  foregroundColor: "var(--text-1)",
+  borderColor: "var(--border)",
+  columnHeaderBackgroundColor: "var(--bg-2)",
+  columnHeaderTextColor: "var(--text-3)",
+  rowHoverColor: "var(--bg-3)",
+  selectedRowBackgroundColor: "var(--accent-bg)",
+  oddRowBackgroundColor: "var(--bg-2)",
   fontFamily: '"Geist", sans-serif',
   fontSize: 13,
-  cellTextColor: "#111111",
-  headerColumnSeparatorColor: "#e5e7eb",
-  rowBorderColor: "#f3f4f6",
+  cellTextColor: "var(--text-1)",
+  headerColumnSeparatorColor: "var(--border)",
+  rowBorderColor: "var(--border)",
   wrapperBorderRadius: "0px",
 }
 const DARK = {
-  backgroundColor: "#0a0a0a",
-  foregroundColor: "#d4d4d8",
-  borderColor: "#18181b",
-  columnHeaderBackgroundColor: "#0a0a0a",
-  columnHeaderTextColor: "#52525b",
-  rowHoverColor: "#111111",
-  selectedRowBackgroundColor: "#0f1629",
-  oddRowBackgroundColor: "#0a0a0a",
+  backgroundColor: "var(--bg)",
+  foregroundColor: "var(--text-1)",
+  borderColor: "var(--border)",
+  columnHeaderBackgroundColor: "var(--bg-2)",
+  columnHeaderTextColor: "var(--text-3)",
+  rowHoverColor: "var(--bg-3)",
+  selectedRowBackgroundColor: "var(--accent-bg)",
+  oddRowBackgroundColor: "var(--bg-2)",
   fontFamily: '"Geist", sans-serif',
   fontSize: 13,
-  cellTextColor: "#d4d4d8",
-  headerColumnSeparatorColor: "#18181b",
-  rowBorderColor: "#18181b",
+  cellTextColor: "var(--text-1)",
+  headerColumnSeparatorColor: "var(--border)",
+  rowBorderColor: "var(--border)",
   wrapperBorderRadius: "0px",
 }
 const PAGE_SIZES = [10, 25, 50]
@@ -67,10 +68,8 @@ function PaginationBar({
     api.addEventListener("paginationChanged", refresh)
     refresh()
     return () => {
-      try {
+      if (!api.isDestroyed()) {
         api.removeEventListener("paginationChanged", refresh)
-      } catch {
-        /* grid already destroyed */
       }
     }
   }, [api, refresh])
@@ -94,7 +93,7 @@ function PaginationBar({
     transition: "all 0.15s",
   })
   return (
-    <div className="[display:flex] [align-items:center] [justify-content:space-between] [padding:8px_16px] [border-top:1px_solid_var(--border)] [background:var(--bg)] [flex-shrink:0]">
+    <div className="flex-wrap gap-3 [display:flex] [align-items:center] [justify-content:space-between] [padding:8px_16px] [border-top:1px_solid_var(--border)] [background:var(--bg)] [flex-shrink:0]">
       <div className="[display:flex] [align-items:center] [gap:8px]">
         <span className="[font-size:12px] [color:var(--text-4)] [font-family:Geist,_sans-serif]">
           Rows per page
@@ -103,6 +102,8 @@ function PaginationBar({
           {PAGE_SIZES.map((n) => (
             <button
               key={n}
+              aria-label={`${n} rows per page`}
+              aria-pressed={pageSize === n}
               onClick={() => onPageSizeChange(n)}
               className={[
                 "[height:28px] [padding:0_10px] [border-radius:6px] [border:1px_solid_var(--border)] [cursor:pointer] [font-size:12px] [font-family:Geist,_sans-serif] [transition:all_0.15s]",
@@ -129,6 +130,7 @@ function PaginationBar({
         </span>
         <div className="[display:flex] [gap:4px]">
           <button
+            aria-label="First page"
             style={btnStyle(isFirst)}
             disabled={isFirst}
             onClick={() => {
@@ -147,6 +149,7 @@ function PaginationBar({
             <ChevronsLeft size={13} />
           </button>
           <button
+            aria-label="Previous page"
             style={btnStyle(isFirst)}
             disabled={isFirst}
             onClick={() => {
@@ -178,6 +181,8 @@ function PaginationBar({
               return (
                 <button
                   key={p}
+                  aria-label={`Page ${p + 1}`}
+                  aria-current={active ? "page" : undefined}
                   onClick={() => {
                     api.paginationGoToPage(p)
                     refresh()
@@ -202,6 +207,7 @@ function PaginationBar({
             })}
           </div>
           <button
+            aria-label="Next page"
             style={btnStyle(isLast)}
             disabled={isLast}
             onClick={() => {
@@ -220,6 +226,7 @@ function PaginationBar({
             <ChevronRight size={13} />
           </button>
           <button
+            aria-label="Last page"
             style={btnStyle(isLast)}
             disabled={isLast}
             onClick={() => {
@@ -245,13 +252,18 @@ function PaginationBar({
 interface SherlockGridProps extends AgGridReactProps {
   containerStyle?: React.CSSProperties
   defaultPageSize?: number
+  showPagination?: boolean
 }
 export function SherlockGrid({
   containerStyle,
   defaultPageSize = 10,
+  defaultColDef,
+  showPagination = true,
+  domLayout,
   ...props
 }: SherlockGridProps) {
   const { theme } = useTheme()
+  const reducedMotion = useReducedMotion()
   const apiRef = useRef<GridApi | null>(null)
   const [pageSize, setPageSize] = useState(defaultPageSize)
   const [ready, setReady] = useState(false)
@@ -268,20 +280,40 @@ export function SherlockGrid({
       style={{
         ...containerStyle,
       }}
-      className="[width:100%] [height:100%] [display:flex] [flex-direction:column]"
+      className={[
+        "[width:100%] [display:flex] [flex-direction:column]",
+        domLayout === "autoHeight"
+          ? ""
+          : "[height:100%] [min-height:var(--workspace-panel-max-height)]",
+      ].join(" ")}
     >
-      <div className="[flex:1] [overflow:hidden]">
+      <div
+        className={
+          domLayout === "autoHeight"
+            ? "[overflow:hidden]"
+            : "[flex:1] [overflow:hidden]"
+        }
+      >
         <AgGridReact
           theme={gridTheme}
-          suppressCellFocus={true}
-          animateRows={true}
+          defaultColDef={{
+            resizable: true,
+            sortable: true,
+            filter: true,
+            minWidth: 48,
+            maxWidth: 640,
+            ...defaultColDef,
+          }}
+          suppressCellFocus
+          animateRows={!reducedMotion}
           rowHeight={44}
           headerHeight={38}
           suppressRowHoverHighlight={false}
-          pagination={true}
+          pagination={showPagination}
           paginationPageSize={pageSize}
           paginationPageSizeSelector={false}
           suppressPaginationPanel={true}
+          domLayout={domLayout}
           onGridReady={(e) => {
             apiRef.current = e.api
             setReady(true)
@@ -290,7 +322,7 @@ export function SherlockGrid({
           {...props}
         />
       </div>
-      {ready && apiRef.current && (
+      {showPagination && ready && apiRef.current && (
         <PaginationBar
           api={apiRef.current}
           pageSize={pageSize}

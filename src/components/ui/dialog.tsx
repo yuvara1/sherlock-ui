@@ -39,8 +39,8 @@ const DialogContent =
       >
         {children}
         {showCloseButton && (
-          <DialogPrimitive.Close className="absolute right-3.5 top-3.5 flex size-6 cursor-pointer items-center justify-center rounded-[5px] border border-[var(--border)] bg-transparent text-[var(--text-4)] transition-colors hover:border-[var(--border-2)] hover:bg-[var(--bg-3)] hover:text-[var(--text-1)]">
-            <X size={14} />
+          <DialogPrimitive.Close className="absolute right-3 top-3 flex size-8 cursor-pointer items-center justify-center rounded-md border border-border bg-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+            <X size={14} aria-hidden="true" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
@@ -69,7 +69,7 @@ function DialogFooter({
   return (
     <div
       className={cn(
-        "mt-1 flex items-center justify-end gap-2 border-t border-[var(--border)] px-5 pb-5 pt-4",
+        "mt-1 flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border)] px-5 pb-5 pt-4",
         className,
       )}
       {...props}
