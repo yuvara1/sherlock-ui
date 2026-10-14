@@ -19,7 +19,7 @@ import { UI_PREVIEW_ACCESS_TOKEN } from "@/api/client"
 import { NavbarLogo } from "@/components/ui/resizable-navbar"
 
 const UI_PREVIEW_ENABLED =
-  import.meta.env.DEV || import.meta.env.VITE_ENABLE_UI_PREVIEW === "true"
+  import.meta.env.VITE_ENABLE_UI_PREVIEW !== "false"
 
 // ── Input field ─────────────────────────────────────────────────────────────
 function Field({
