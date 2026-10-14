@@ -1,3 +1,4 @@
+import DependencyFlow from "@/components/workspace/DependencyFlow"
 import PageHeading from "@/components/workspace/PageHeading"
 import { SherlockGrid } from "@/components/ui/SherlockGrid"
 import { Button as SortButton } from "@/components/ui/button"
@@ -17,11 +18,11 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  X,
   GitBranch,
   AlertTriangle,
   Zap,
   Cloud,
+  ArrowRight,
 } from "lucide-react"
 /* ── Keyframes injected once ─────────────────────────────── */
 /* ── External services data ──────────────────────────────── */
@@ -530,262 +531,164 @@ function SortableTH({
     </th>
   )
 }
-/* ── Dependency Graph Modal ──────────────────────────────── */
-function GraphModal({ onClose }: { onClose: () => void }) {
-  const W = 820,
-    H = 480
-  const svcX = 80,
-    svcStartY = 40,
-    svcGap = (H - 80) / (SERVICES_GRAPH.length - 1)
-  const depX = 660,
-    depStartY = 30,
-    depGap = (H - 60) / (EXTERNAL.length - 1)
-  const svcNodes = SERVICES_GRAPH.map((s, i) => ({
-    ...s,
-    x: svcX,
-    y: svcStartY + i * svcGap,
-  }))
-  const depNodes = EXTERNAL.map((d, i) => ({
-    ...d,
-    x: depX,
-    y: depStartY + i * depGap,
-  }))
-  const depByNode = Object.fromEntries(depNodes.map((d) => [d.node, d]))
-  const [hovSvc, setHovSvc] = useState<string | null>(null)
-  const [hovDep, setHovDep] = useState<string | null>(null)
-  const activeEdges = hovSvc
-    ? (svcNodes.find((s) => s.id === hovSvc)?.deps ?? [])
-    : hovDep
-      ? svcNodes.filter((s) => s.deps.includes(hovDep)).map((s) => s.id)
+/* ── Dependency workflow map ─────────────────────────────── */
+function DependencyMap() {
+  const [selected, setSelected] = useState<{
+    kind: "service" | "dependency"
+    id: string
+  }>({ kind: "dependency", id: "postgres" })
+  const selectedService =
+    selected.kind === "service"
+      ? SERVICES_GRAPH.find((service) => service.id === selected.id)
       : null
+  const selectedDependency =
+    selected.kind === "dependency"
+      ? EXTERNAL.find((dependency) => dependency.node === selected.id)
+      : null
+  const connectedDependencies = selectedService
+    ? EXTERNAL.filter((dependency) =>
+        selectedService.deps.includes(dependency.node),
+      )
+    : []
+  const connectedServices = selectedDependency
+    ? SERVICES_GRAPH.filter((service) =>
+        service.deps.includes(selectedDependency.node),
+      )
+    : []
+
   return (
-    <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-      className="[position:fixed] [inset:0] [z-index:200] [background:rgba(0,0,0,0.6)] [display:flex] [align-items:center] [justify-content:center]"
-    >
-      <div
-        style={{
-          width: W + 80,
-        }}
-        className="[background:var(--bg)] [border:1px_solid_var(--border-2)] [border-radius:12px] [max-width:95vw] [max-height:90vh] [overflow:hidden] [display:flex] [flex-direction:column] [box-shadow:0_24px_64px_rgba(0,0,0,0.4)]"
-      >
-        {/* Modal header */}
-        <div className="[display:flex] [align-items:center] [justify-content:space-between] [padding:16px_20px] [border-bottom:1px_solid_var(--border)]">
-          <div className="[display:flex] [align-items:center] [gap:10px]">
-            <Network size={16} className="[color:var(--accent)]" />
-            <span className="[font-size:15px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)]">
-              Dependency Graph
-            </span>
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex size-8 items-center justify-center rounded-md border border-info-border bg-info-surface text-info">
+            <Network className="size-4" aria-hidden="true" />
           </div>
-          <div className="[display:flex] [align-items:center] [gap:16px]">
-            <span className="[font-size:12px] [color:var(--text-4)]">
-              Hover a node to highlight edges
-            </span>
-            <button
-              onClick={onClose}
-              className="[display:flex] [align-items:center] [justify-content:center] [width:28px] [height:28px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg-2)] [cursor:pointer] [color:var(--text-3)] hover:[background:var(--bg-3)]"
-            >
-              <X size={13} />
-            </button>
+          <div>
+            <div className="text-sm font-semibold text-foreground">
+              Service dependency map
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Explore relationships · Select a node or connection to inspect
+              demo traffic
+            </div>
           </div>
         </div>
+        <span className="rounded border border-warning-border bg-warning-surface px-2 py-1 text-xs font-medium text-warning">
+          Demo data · Not production evidence
+        </span>
+      </div>
+      <DependencyFlow
+        services={SERVICES_GRAPH}
+        dependencies={EXTERNAL}
+        selected={selected}
+        onSelect={setSelected}
+      />
 
-        {/* Graph */}
-        <div className="[padding:16px_20px] [overflow:auto]">
-          <svg
-            width="100%"
-            viewBox={`0 0 ${W} ${H}`}
-            className="[overflow:visible] [display:block]"
-          >
-            {/* Edges */}
-            {svcNodes.map((svc) =>
-              svc.deps.map((dep) => {
-                const dNode = depByNode[dep]
-                if (!dNode) return null
-                const isHighlighted =
-                  activeEdges === null ||
-                  (hovSvc
-                    ? activeEdges.includes(dep)
-                    : activeEdges.includes(svc.id))
-                const dColor = statusColor(dNode.status)
-                return (
-                  <path
-                    key={`${svc.id}-${dep}`}
-                    d={`M ${svc.x + 60} ${svc.y} C ${(svc.x + dNode.x) / 2} ${svc.y}, ${(svc.x + dNode.x) / 2} ${dNode.y}, ${dNode.x - 60} ${dNode.y}`}
-                    stroke={isHighlighted ? dColor : "var(--border-2)"}
-                    strokeWidth={isHighlighted ? 1.5 : 1}
-                    strokeDasharray={
-                      dNode.status === "Critical" ? "4 3" : undefined
-                    }
-                    fill="none"
-                    opacity={isHighlighted ? 0.7 : 0.25}
-                    className="[transition:opacity_0.15s,_stroke_0.15s]"
-                  />
-                )
-              }),
-            )}
-
-            {/* Service nodes (left) */}
-            {svcNodes.map((svc) => {
-              const Icon = svc.icon
-              const isHighlighted =
-                hovSvc === svc.id ||
-                (hovDep !== null &&
-                  (activeEdges as string[] | null)?.includes(svc.id))
-              return (
-                <g
-                  key={svc.id}
-                  transform={`translate(${svc.x}, ${svc.y})`}
-                  onMouseEnter={() => setHovSvc(svc.id)}
-                  onMouseLeave={() => setHovSvc(null)}
-                  className="[cursor:pointer]"
-                >
-                  <rect
-                    x={-60}
-                    y={-16}
-                    width={120}
-                    height={32}
-                    rx={6}
-                    fill={isHighlighted ? "var(--accent-bg)" : "var(--bg-2)"}
-                    stroke={
-                      isHighlighted ? "var(--accent-border)" : "var(--border)"
-                    }
-                    strokeWidth={1}
-                    className="[transition:fill_0.15s,_stroke_0.15s]"
-                  />
-                  <foreignObject x={-54} y={-9} width={16} height={16}>
-                    <Icon
-                      size={13}
-                      color={isHighlighted ? "var(--accent)" : "var(--text-3)"}
-                    />
-                  </foreignObject>
-                  <text
-                    x={-34}
-                    y={5}
-                    fontSize={11}
-                    fontFamily="Geist, sans-serif"
-                    fontWeight={500}
-                    fill={isHighlighted ? "var(--accent)" : "var(--text-2)"}
-                    className="[transition:fill_0.15s]"
-                  >
-                    {svc.label.length > 14
-                      ? svc.label.slice(0, 13) + "…"
-                      : svc.label}
-                  </text>
-                </g>
-              )
-            })}
-
-            {/* Dep nodes (right) */}
-            {depNodes.map((dep) => {
-              const Icon = dep.icon
-              const color = statusColor(dep.status)
-              const isHighlighted =
-                hovDep === dep.node ||
-                (hovSvc !== null &&
-                  (activeEdges as string[] | null)?.includes(dep.node))
-              return (
-                <g
-                  key={dep.node}
-                  transform={`translate(${dep.x}, ${dep.y})`}
-                  onMouseEnter={() => setHovDep(dep.node)}
-                  onMouseLeave={() => setHovDep(null)}
-                  className="[cursor:pointer]"
-                >
-                  <rect
-                    x={-60}
-                    y={-15}
-                    width={122}
-                    height={30}
-                    rx={6}
-                    fill={isHighlighted ? `${color}18` : "var(--bg-2)"}
-                    stroke={isHighlighted ? color : "var(--border)"}
-                    strokeWidth={1}
-                    className="[transition:fill_0.15s,_stroke_0.15s]"
-                  />
-                  <foreignObject x={-52} y={-8} width={14} height={14}>
-                    <Icon
-                      size={12}
-                      color={isHighlighted ? color : "var(--text-3)"}
-                    />
-                  </foreignObject>
-                  <text
-                    x={-34}
-                    y={4}
-                    fontSize={10}
-                    fontFamily="Geist Mono, monospace"
-                    fontWeight={500}
-                    fill={isHighlighted ? color : "var(--text-3)"}
-                    className="[transition:fill_0.15s]"
-                  >
-                    {dep.name.length > 16
-                      ? dep.name.slice(0, 15) + "…"
-                      : dep.name}
-                  </text>
-                  {dep.status !== "Healthy" && (
-                    <circle
-                      cx={52}
-                      cy={-9}
-                      r={4}
-                      fill={color}
-                      opacity={isHighlighted ? 1 : 0.6}
-                    />
-                  )}
-                </g>
-              )
-            })}
-
-            {/* Column labels */}
-            <text
-              x={svcX}
-              y={-14}
-              fontSize={10}
-              fontFamily="Geist, sans-serif"
-              fontWeight={500}
-              fill="var(--text-4)"
-              textAnchor="middle"
-              letterSpacing="0.06em"
-            >
-              SERVICES
-            </text>
-            <text
-              x={depX}
-              y={-14}
-              fontSize={10}
-              fontFamily="Geist, sans-serif"
-              fontWeight={500}
-              fill="var(--text-4)"
-              textAnchor="middle"
-              letterSpacing="0.06em"
-            >
-              DEPENDENCIES
-            </text>
-          </svg>
-
-          {/* Legend */}
-          <div className="[display:flex] [gap:16px] [margin-top:16px] [padding-top:16px] [border-top:1px_solid_var(--border)]">
+      <div className="border-t border-border bg-card px-4 py-3">
+        {selectedDependency ? (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(7rem,0.5fr))_minmax(0,1.4fr)] lg:items-center">
+            <div className="min-w-0">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="truncate text-sm font-semibold text-foreground">
+                  {selectedDependency.name}
+                </span>
+                <StatusBadge status={selectedDependency.status} />
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {selectedDependency.type} · checked{" "}
+                {selectedDependency.lastCheck}
+              </div>
+            </div>
             {[
-              { color: "var(--green)", label: "Healthy" },
-              { color: "var(--yellow)", label: "Degraded" },
-              { color: "var(--red)", label: "Critical — dashed edges" },
-            ].map((l) => (
-              <span
-                key={l.label}
-                className="[display:flex] [align-items:center] [gap:6px] [font-size:11px] [color:var(--text-3)]"
-              >
-                <span
-                  style={{
-                    background: l.color,
-                  }}
-                  className="[width:8px] [height:8px] [border-radius:50%] [flex-shrink:0]"
-                />
-                {l.label}
-              </span>
+              [
+                "Latency",
+                selectedDependency.latency >= 1000
+                  ? `${(selectedDependency.latency / 1000).toFixed(1)}s`
+                  : `${selectedDependency.latency}ms`,
+              ],
+              ["Calls / min", selectedDependency.callsPerMin.toLocaleString()],
+              ["Error rate", `${selectedDependency.errRate.toFixed(1)}%`],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  {label}
+                </div>
+                <div className="mt-1 font-mono text-sm font-medium text-foreground">
+                  {value}
+                </div>
+              </div>
             ))}
+            <div>
+              <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Used by
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {connectedServices.map((service) => (
+                  <span
+                    key={service.id}
+                    className="rounded border border-border bg-background px-2 py-1 font-mono text-[10px] text-muted-foreground"
+                  >
+                    {service.label}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
+        ) : selectedService ? (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-semibold text-foreground">
+                {selectedService.label}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Internal service · {selectedService.deps.length} external
+                connections
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Connects to
+              </span>
+              {connectedDependencies.map((dependency) => (
+                <span
+                  key={dependency.node}
+                  className="inline-flex items-center gap-1.5 rounded border border-border bg-background px-2 py-1 font-mono text-[10px] text-muted-foreground"
+                >
+                  <span
+                    className="size-1.5 rounded-full"
+                    style={{ background: statusColor(dependency.status) }}
+                  />
+                  {dependency.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-3 text-[11px] text-muted-foreground">
+          {[
+            { color: "var(--green)", label: "Healthy" },
+            { color: "var(--yellow)", label: "Degraded" },
+            { color: "var(--red)", label: "Critical" },
+          ].map((item) => (
+            <span key={item.label} className="flex items-center gap-1.5">
+              <span
+                className="size-2 rounded-full"
+                style={{ background: item.color }}
+              />
+              {item.label}
+            </span>
+          ))}
+          <span className="ml-auto flex items-center gap-1.5">
+            Flow direction
+            <ArrowRight className="size-3" />
+          </span>
         </div>
+      </div>
+      <div className="[display:none] max-[640px]:[display:flex] [gap:14px] [padding:10px_14px] [border-top:1px_solid_var(--border)] [background:var(--bg)] [font-size:11px] [color:var(--text-3)]">
+        <span className="[color:var(--green)]">● Healthy</span>
+        <span className="[color:var(--yellow)]">● Degraded</span>
+        <span className="[color:var(--red)]">● Critical</span>
       </div>
     </div>
   )
@@ -819,9 +722,7 @@ const TABS = ["External Services", "Packages"] as const
 type Tab = typeof TABS[number]
 export default function Dependencies() {
   const [tab, setTab] = useState<Tab>("External Services")
-  const [graphOpen, setGraph] = useState(false)
   const [hovRow, setHovRow] = useState<string | null>(null)
-  const extSort = useSort(EXTERNAL)
   const pkgSort = useSort(PACKAGES)
   const criticalCount = EXTERNAL.filter((d) => d.status === "Critical").length
   const vulnCount = PACKAGES.filter((p) => p.vulns > 0).length
@@ -839,20 +740,9 @@ export default function Dependencies() {
       <PageHeading
         className="page-heading-row [display:flex] [align-items:center] [justify-content:space-between] [padding-bottom:20px] [border-bottom:1px_solid_var(--border)] [margin-bottom:20px]"
         actions={
-          <>
-            <div className="[display:flex] [gap:8px]">
-              <button
-                onClick={() => setGraph(true)}
-                className="[height:32px] [padding:0_14px] [border-radius:6px] [border:1px_solid_var(--accent-border)] [background:var(--accent-bg)] [color:var(--accent)] [font-size:13px] [font-weight:500] [cursor:pointer] [letter-spacing:-0.01em] [display:flex] [align-items:center] [gap:6px] hover:[background:rgba(50,145,255,0.14)]"
-              >
-                <Network size={13} />
-                View dependency graph
-              </button>
-              <button className="[height:32px] [padding:0_14px] [border-radius:6px] [border:1px_solid_var(--border)] [background:var(--bg-2)] [color:var(--text-1)] [font-size:13px] [font-weight:500] [cursor:pointer] [letter-spacing:-0.01em] hover:[background:var(--bg-3)]">
-                Scan dependencies
-              </button>
-            </div>
-          </>
+          <SortButton variant="outline" size="sm">
+            Scan dependencies
+          </SortButton>
         }
       >
         <div>
@@ -907,45 +797,10 @@ export default function Dependencies() {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        {tab === "External Services" ? (
-          <SherlockGrid
-            rowData={extSort.sorted}
-            getRowId={({ data }) => data.name}
-            domLayout="autoHeight"
-            showPagination={false}
-            columnDefs={[
-              { field: "name", headerName: "Name", minWidth: 190, flex: 1 },
-              { field: "type", headerName: "Type", minWidth: 130 },
-              {
-                field: "status",
-                headerName: "Status",
-                minWidth: 110,
-                cellRenderer: ({ value }) => <StatusBadge status={value} />,
-              },
-              {
-                field: "latency",
-                headerName: "Latency",
-                minWidth: 110,
-                valueFormatter: ({ value }) =>
-                  value >= 1000 ? `${(value / 1000).toFixed(1)}s` : `${value}ms`,
-              },
-              {
-                field: "callsPerMin",
-                headerName: "Calls/min",
-                minWidth: 110,
-                valueFormatter: ({ value }) => value.toLocaleString(),
-              },
-              {
-                field: "errRate",
-                headerName: "Error rate",
-                minWidth: 110,
-                valueFormatter: ({ value }) => `${value.toFixed(1)}%`,
-              },
-              { field: "lastCheck", headerName: "Last check", minWidth: 120 },
-            ]}
-          />
-        ) : (
+      {tab === "External Services" ? (
+        <DependencyMap />
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           <SherlockGrid
             rowData={pkgSort.sorted}
             getRowId={({ data }) => data.pkg}
@@ -981,11 +836,8 @@ export default function Dependencies() {
               },
             ]}
           />
-        )}
-      </div>
-
-      {/* Graph modal */}
-      {graphOpen && <GraphModal onClose={() => setGraph(false)} />}
+        </div>
+      )}
     </div>
   )
 }

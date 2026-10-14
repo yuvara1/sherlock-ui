@@ -17,14 +17,15 @@ import { useTheme } from "@/lib/theme"
 import { useReducedMotion } from "motion/react"
 ModuleRegistry.registerModules([AllCommunityModule])
 const LIGHT = {
-  backgroundColor: "var(--bg)",
+  backgroundColor: "var(--bg-2)",
   foregroundColor: "var(--text-1)",
   borderColor: "var(--border)",
-  columnHeaderBackgroundColor: "var(--bg-2)",
+  columnHeaderBackgroundColor: "var(--bg-3)",
   columnHeaderTextColor: "var(--text-3)",
   rowHoverColor: "var(--bg-3)",
   selectedRowBackgroundColor: "var(--accent-bg)",
-  oddRowBackgroundColor: "var(--bg-2)",
+  oddRowBackgroundColor:
+    "color-mix(in srgb, var(--bg-3) 55%, var(--bg-2))",
   fontFamily: '"Geist", sans-serif',
   fontSize: 13,
   cellTextColor: "var(--text-1)",
@@ -33,14 +34,15 @@ const LIGHT = {
   wrapperBorderRadius: "0px",
 }
 const DARK = {
-  backgroundColor: "var(--bg)",
+  backgroundColor: "var(--bg-2)",
   foregroundColor: "var(--text-1)",
   borderColor: "var(--border)",
-  columnHeaderBackgroundColor: "var(--bg-2)",
+  columnHeaderBackgroundColor: "var(--bg-3)",
   columnHeaderTextColor: "var(--text-3)",
   rowHoverColor: "var(--bg-3)",
   selectedRowBackgroundColor: "var(--accent-bg)",
-  oddRowBackgroundColor: "var(--bg-2)",
+  oddRowBackgroundColor:
+    "color-mix(in srgb, var(--bg-3) 55%, var(--bg-2))",
   fontFamily: '"Geist", sans-serif',
   fontSize: 13,
   cellTextColor: "var(--text-1)",

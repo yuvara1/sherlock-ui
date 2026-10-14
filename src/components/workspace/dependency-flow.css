@@ -1,0 +1,33 @@
+.dependency-flow {
+  --xy-background-color: var(--bg);
+  --xy-background-pattern-dots-color: var(--border-2);
+  --xy-edge-stroke: var(--text-4);
+  --xy-edge-stroke-width: 1.5;
+  --xy-handle-background-color: var(--text-4);
+  --xy-handle-border-color: var(--bg-2);
+  --xy-controls-button-background-color: var(--bg-2);
+  --xy-controls-button-background-color-hover: var(--bg-3);
+  --xy-controls-button-color: var(--text-2);
+  --xy-controls-button-color-hover: var(--text-1);
+  --xy-controls-button-border-color: var(--border);
+  --xy-minimap-background-color: var(--bg-2);
+  --xy-minimap-mask-background-color: var(--bg-3);
+  --xy-minimap-node-background-color: var(--text-4);
+}
+.dependency-flow .react-flow__controls,
+.dependency-flow .react-flow__minimap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: none; }
+.dependency-flow .react-flow__node:focus-visible .dependency-flow-node { outline: 2px solid var(--ring); outline-offset: 2px; }
+.dependency-flow-status { background: var(--green); }
+.dependency-flow-node[data-status="Critical"] .dependency-flow-status { background: var(--red); }
+.dependency-flow-node[data-status="Degraded"] .dependency-flow-status { background: var(--yellow); }
+.dependency-flow-edge { --xy-edge-stroke: var(--text-4); transition: opacity 160ms ease; }
+.dependency-flow-edge.status-healthy { --xy-edge-stroke: var(--green); }
+.dependency-flow-edge.status-critical { --xy-edge-stroke: var(--red); }
+.dependency-flow-edge.status-degraded { --xy-edge-stroke: var(--yellow); }
+.dependency-flow-edge.is-related { opacity: 1; --xy-edge-stroke-width: 2; }
+.dependency-flow-edge.is-muted { opacity: 0.16; }
+.dependency-flow .react-flow__edge.selected .react-flow__edge-path { stroke: var(--xy-edge-stroke); }
+@media (prefers-reduced-motion: reduce) {
+  .dependency-flow .react-flow__edge-path { animation: none !important; }
+  .dependency-flow-edge { transition: none; }
+}
