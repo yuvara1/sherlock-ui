@@ -227,7 +227,6 @@ const TRUSTED_COMPANIES = [
   "Vercel",
   "Cloudflare",
   "Linear",
-  "Figma",
   "Notion",
   "Railway",
   "Fly.io",

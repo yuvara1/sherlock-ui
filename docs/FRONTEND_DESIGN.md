@@ -1,8 +1,7 @@
 # Sherlock frontend direction
 
-Guidance: `.agents/skills/frontend-design/SKILL.md`, installed from
-`anthropics/skills`. The existing Sherlock tokens and component APIs remain the
-source of truth; the skill informs composition rather than replacing the system.
+The existing Sherlock tokens and component APIs are the source of truth for
+frontend composition and visual decisions.
 
 ## Direction: a precise operations console
 

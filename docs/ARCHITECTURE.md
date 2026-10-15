@@ -7,8 +7,7 @@
 > Zustand · Zod · Axios · AG Grid · Recharts · Motion · Aceternity UI / React Bits · Vaul.
 
 This document is the single source of truth for how the codebase is organized and
-why. It is written for both human contributors and AI coding agents — see
-[§10 Guidelines for AI Agents](#10-guidelines-for-ai-agents).
+why. See [§10 Contributor Guidelines](#10-contributor-guidelines).
 
 ---
 
@@ -62,8 +61,7 @@ src/
 ├── types/              # Shared TypeScript types (domain models)
 ├── lib/                # Cross-cutting utilities (utils.ts, theme.tsx)
 ├── mocks/              # Deterministic mock data for demo / offline dev
-├── assets/             # Static design references shipped with the app
-└── imports/            # Figma-imported raster assets
+└── assets/             # Static images used by the application
 ```
 
 **Why this shape**
@@ -208,8 +206,6 @@ pnpm preview    # serve the production build locally
 pnpm format     # oxfmt
 ```
 
-Inside Figma Make the dev server is already running on `$PORT` (default 8443).
-
 ---
 
 ## 9. Deployment
@@ -218,15 +214,13 @@ Deployed on **Vercel**, pushed to `github.com/yuvara1/sherlock-ui`.
 
 - `vercel.json` provides SPA rewrites (all paths → `index.html`) plus the
   security headers in [§6](#6-security-measures).
-- The repo has a corrupted git history, so publishing uses an **orphan branch
-  force-pushed to `main`** (a fresh single-commit tree). This is intentional —
-  do not attempt a normal merge/rebase against the remote history.
+- Changes are published through the normal Git workflow on `main`.
 
 ---
 
-## 10. Guidelines for AI Agents
+## 10. Contributor Guidelines
 
-Read this before editing.
+Follow these rules when contributing.
 
 1. **Extend, don't replace.** This is a real app, not a scaffold. Preserve the
    router, the `/app` shell, providers, styling, and font wiring. Make focused
@@ -249,4 +243,4 @@ Read this before editing.
    skeleton fallback. Memoize expensive/pure components.
 8. **Verify proportionally.** Localized edits don't need a full build; broad
    changes should at least `pnpm build`.
-9. **Publishing.** Push via an orphan branch force-pushed to `main` (see §9).
+9. **Publishing.** Use normal commits and pushes to `main` (see §9).

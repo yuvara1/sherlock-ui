@@ -2,7 +2,7 @@
 
 **Sherlock** is an AI-powered API debugging & distributed-systems observability platform for SRE and backend teams. It answers one question fast: **"Why did this API request fail?"** — by correlating API requests → traces → services → logs → metrics → dependencies → deployments → incidents → evidence → root-cause analysis → AI investigation.
 
-This document is the single source of truth for the **architecture, conventions, and contribution guidelines** of the frontend. It is written to be read by both humans and AI coding agents. If you change the architecture, update this file in the same change.
+This document is the single source of truth for the **architecture, conventions, and contribution guidelines** of the frontend. It is maintained for project contributors. If you change the architecture, update this file in the same change.
 
 > **Backend status:** the backend does not exist yet. The frontend runs entirely on a **mock data layer** behind a repository abstraction, so the UI already behaves like a real product. The mock implementations are designed to be swapped for HTTP calls to a Java Spring Boot backend **without changing any UI code**.
 
@@ -26,7 +26,7 @@ This document is the single source of truth for the **architecture, conventions,
 | Validation | **Zod** + hand-rolled form handling |
 | Effects/visuals | React Three Fiber, tsparticles (landing page only) |
 
-> **Note on the spec vs. reality:** the original build prompt referenced Next.js, TanStack Query, shadcn/ui, React Flow, and Monaco. This project deliberately targets **Vite SPA + react-router + a custom repository layer + Recharts + AG Grid + custom UI primitives**. When contributing, follow *this* stack, not the prompt.
+> **Implementation note:** this project targets **Vite SPA + react-router + a custom repository layer + Recharts + AG Grid + custom UI primitives**.
 
 ---
 
@@ -39,7 +39,7 @@ pnpm install
 # 2. Configure env (optional; mocks work with no env)
 cp .env.example .env.local
 
-# 3. Run — a dev server is typically already running on $PORT (default 8443)
+# 3. Run the local development server
 pnpm dev            # vite --host 0.0.0.0
 
 # 4. Production build / preview
@@ -74,7 +74,7 @@ src/
 ├── schemas/              # Zod schemas (form/input validation)
 ├── types/                # Domain types & enums (map to future Spring Boot DTOs)
 ├── lib/                  # utils.ts (cn helper), theme.tsx
-├── assets/ , imports/    # Static images and imported design references
+├── assets/              # Static images used by the application
 ```
 
 **Rationale**
@@ -245,7 +245,7 @@ When the Spring Boot backend lands: implement HTTP branches in each `src/api/*` 
 
 ---
 
-## 12. Guidelines for AI agents contributing to this codebase
+## 12. Contributor guidelines
 
 Read this before editing. These rules keep the architecture intact.
 
