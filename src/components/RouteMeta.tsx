@@ -57,6 +57,10 @@ const META: Record<string, [string, string?]> = {
     "Dependencies",
     "Interactive topology graph — visualize blast radius and impact.",
   ],
+  "/app/dependencies/packages": [
+    "Packages",
+    "Third-party package inventory and known vulnerabilities.",
+  ],
   "/app/metrics": [
     "Metrics",
     "RED metrics, SLOs, and custom dashboards in one place.",

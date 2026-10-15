@@ -9,6 +9,7 @@ import {
   type ReactElement,
   type ReactNode,
   type ButtonHTMLAttributes,
+  type CSSProperties,
 } from "react"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { authErrorMessage } from "@/api/auth"
@@ -140,6 +141,7 @@ export function FormDialog({
   onOpenChange,
   children,
   contentClassName,
+  contentStyle,
 }: {
   title: string
   description: string
@@ -147,11 +149,13 @@ export function FormDialog({
   onOpenChange: (open: boolean) => void
   children: ReactNode
   contentClassName?: string
+  contentStyle?: CSSProperties
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={`border-[var(--border)] bg-[var(--bg-2)] text-[var(--text-1)] ${contentClassName ?? ""}`}
+        style={contentStyle}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

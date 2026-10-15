@@ -24,6 +24,7 @@ import {
   Plug,
   BellRing,
   Building2,
+  Package,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { Button } from "@/components/ui/button"
@@ -85,6 +86,11 @@ const NAV_GROUPS = [
       { icon: Server, label: "Services", to: "/app/services" },
       { icon: BarChart3, label: "Metrics", to: "/app/metrics" },
       { icon: Network, label: "Dependencies", to: "/app/dependencies" },
+      {
+        icon: Package,
+        label: "Packages",
+        to: "/app/dependencies/packages",
+      },
       { icon: Rocket, label: "Deployments", to: "/app/deployments" },
     ],
   },
@@ -458,13 +464,18 @@ function SidebarContent({
                   <TooltipTrigger asChild>
                     <NavLink
                       to={to}
+                      end={to === "/app/dependencies"}
                       className="[display:block] [margin-bottom:1px]"
                     >
                       {({ isActive }) => (
                         <div
                           className={[
                             "[position:relative] [display:flex] [align-items:center] [gap:10px] [border-radius:6px] [cursor:pointer] [user-select:none] [transition:background_0.1s,_color_0.1s]",
-                            collapsed ? "[padding:7px_0]" : "[padding:6px_8px]",
+                            collapsed
+                              ? "[padding:7px_0]"
+                              : to === "/app/dependencies/packages"
+                                ? "[padding:6px_8px_6px_28px]"
+                                : "[padding:6px_8px]",
                             collapsed
                               ? "[justify-content:center]"
                               : "[justify-content:flex-start]",
@@ -481,7 +492,12 @@ function SidebarContent({
                           {isActive && (
                             <span className="[position:absolute] [left:0] [top:50%] [transform:translateY(-50%)] [width:2px] [height:14px] [background:var(--accent)] [border-radius:0_2px_2px_0]" />
                           )}
-                          <Icon size={13} className="[flex-shrink:0]" />
+                          <Icon
+                            size={
+                              to === "/app/dependencies/packages" ? 12 : 13
+                            }
+                            className="[flex-shrink:0]"
+                          />
                           <AnimatePresence>
                             {!collapsed && (
                               <motion.span
@@ -721,7 +737,13 @@ export default function Shell() {
   )
   useTheme()
   const location = useLocation()
-  const currentNav = NAV.find((n) => location.pathname.startsWith(n.to))
+  const currentNav = [...NAV]
+    .sort((a, b) => b.to.length - a.to.length)
+    .find(
+      (item) =>
+        location.pathname === item.to ||
+        location.pathname.startsWith(`${item.to}/`),
+    )
   const currentLabel = currentNav?.label ?? "Sherlock"
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 1024)

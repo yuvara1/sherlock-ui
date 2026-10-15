@@ -2,7 +2,7 @@ import PageHeading from "@/components/workspace/PageHeading"
 import PageInsights from "@/components/workspace/PageInsights"
 import { SherlockGrid } from "@/components/ui/SherlockGrid"
 import { Button as SortButton } from "@/components/ui/button"
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import {
   Dialog,
   DialogTrigger,
@@ -405,6 +405,10 @@ function ExpandedRow({ inc }: { inc: typeof INCIDENTS[0] }) {
 }
 export default function Incidents() {
   const [createOpen, setCreateOpen] = useState(false)
+  const [createDialogCenter, setCreateDialogCenter] = useState<{
+    x: number
+    y: number
+  }>()
   const [createSev, setCreateSev] = useState("critical")
   const [createSvc, setCreateSvc] = useState("api-gateway")
   const [search, setSearch] = useState("")
@@ -414,6 +418,28 @@ export default function Incidents() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [sortCol, setSortCol] = useState("")
   const [sortDir, setSortDir] = useState<SortDir>(null)
+  const updateCreateDialogCenter = () => {
+    const main = document.getElementById("main-content")
+    if (!main) return
+    const bounds = main.getBoundingClientRect()
+    setCreateDialogCenter({
+      x: bounds.left + bounds.width / 2,
+      y: bounds.top + bounds.height / 2,
+    })
+  }
+  useEffect(() => {
+    if (!createOpen) return
+    const main = document.getElementById("main-content")
+    if (!main) return
+    updateCreateDialogCenter()
+    const observer = new ResizeObserver(updateCreateDialogCenter)
+    observer.observe(main)
+    window.addEventListener("resize", updateCreateDialogCenter)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", updateCreateDialogCenter)
+    }
+  }, [createOpen])
   const onSort = (c: string) => {
     if (sortCol === c)
       setSortDir((d) => (d === "asc" ? "desc" : d === "desc" ? null : "asc"))
@@ -508,13 +534,29 @@ export default function Incidents() {
         className="page-heading-row mb-4 flex items-center justify-between border-b border-border pb-3.5"
         actions={
           <>
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <Dialog
+              open={createOpen}
+              onOpenChange={(nextOpen) => {
+                if (nextOpen) updateCreateDialogCenter()
+                setCreateOpen(nextOpen)
+              }}
+            >
               <DialogTrigger asChild>
                 <button className="[display:flex] [align-items:center] [gap:6px] [padding:6px_14px] [border-radius:6px] [font-size:13px] [font-weight:500] [background:var(--text-1)] [color:var(--bg)] [border:none] [cursor:pointer] [letter-spacing:-0.01em]">
                   <Plus size={13} /> New Incident
                 </button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent
+                className="animate-none data-[state=closed]:animate-none"
+                style={
+                  createDialogCenter
+                    ? {
+                        left: createDialogCenter.x,
+                        top: createDialogCenter.y,
+                      }
+                    : undefined
+                }
+              >
                 <DialogHeader>
                   <DialogTitle>Create Incident</DialogTitle>
                   <DialogDescription>

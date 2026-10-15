@@ -62,6 +62,10 @@ export default function Projects() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [deleting, setDeleting] = useState<ProjectRecord | null>(null)
+  const [dialogCenter, setDialogCenter] = useState<{
+    x: number
+    y: number
+  }>()
   const writable = user?.role !== "VIEWER"
   const manages = user?.role === "OWNER" || user?.role === "ADMIN"
   useEffect(() => {
@@ -72,6 +76,26 @@ export default function Projects() {
           .map(projectForSelector),
       )
   }, [resource.data, setProjects])
+  useEffect(() => {
+    if (!open) return
+    const main = document.getElementById("main-content")
+    if (!main) return
+    const updateCenter = () => {
+      const bounds = main.getBoundingClientRect()
+      setDialogCenter({
+        x: bounds.left + bounds.width / 2,
+        y: bounds.top + bounds.height / 2,
+      })
+    }
+    updateCenter()
+    const observer = new ResizeObserver(updateCenter)
+    observer.observe(main)
+    window.addEventListener("resize", updateCenter)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", updateCenter)
+    }
+  }, [open])
   const filtered = useMemo(
     () =>
       (resource.data ?? [])
@@ -91,6 +115,14 @@ export default function Projects() {
   )
 
   function begin(project?: ProjectRecord) {
+    const main = document.getElementById("main-content")
+    if (main) {
+      const bounds = main.getBoundingClientRect()
+      setDialogCenter({
+        x: bounds.left + bounds.width / 2,
+        y: bounds.top + bounds.height / 2,
+      })
+    }
     setEditing(project ?? null)
     setName(project?.name ?? "")
     setDescription(project?.description ?? "")
@@ -393,7 +425,14 @@ export default function Projects() {
             : "Create an observability boundary for an application, service group, or distributed system."
         }
         contentClassName={
-          editing ? undefined : "w-[min(600px,calc(100vw-32px))] rounded-lg"
+          editing
+            ? "animate-none data-[state=closed]:animate-none"
+            : "w-[min(600px,calc(100vw-32px))] rounded-lg animate-none data-[state=closed]:animate-none"
+        }
+        contentStyle={
+          dialogCenter
+            ? { left: dialogCenter.x, top: dialogCenter.y }
+            : undefined
         }
       >
         {editing ? (

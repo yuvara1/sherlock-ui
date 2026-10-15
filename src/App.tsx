@@ -264,6 +264,14 @@ const router = createBrowserRouter(
           }
         />
         <Route
+          path="dependencies/packages"
+          element={
+            <Suspense fallback={<DependenciesSkeleton />}>
+              <Dependencies view="packages" />
+            </Suspense>
+          }
+        />
+        <Route
           path="integrations"
           element={
             <Suspense fallback={<IntegrationsSkeleton />}>

@@ -537,6 +537,7 @@ function DependencyMap() {
     kind: "service" | "dependency"
     id: string
   }>({ kind: "dependency", id: "postgres" })
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const selectedService =
     selected.kind === "service"
       ? SERVICES_GRAPH.find((service) => service.id === selected.id)
@@ -555,9 +556,16 @@ function DependencyMap() {
         service.deps.includes(selectedDependency.node),
       )
     : []
+  const inspectSelection = (selection: {
+    kind: "service" | "dependency"
+    id: string
+  }) => {
+    setSelected(selection)
+    setDetailsOpen(true)
+  }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div className="flex h-[calc(100dvh-2.875rem)] min-h-[calc(100dvh-2.875rem)] flex-col overflow-hidden bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="flex size-8 items-center justify-center rounded-md border border-info-border bg-info-surface text-info">
@@ -577,119 +585,143 @@ function DependencyMap() {
           Demo data · Not production evidence
         </span>
       </div>
-      <DependencyFlow
-        services={SERVICES_GRAPH}
-        dependencies={EXTERNAL}
-        selected={selected}
-        onSelect={setSelected}
-      />
-
-      <div className="border-t border-border bg-card px-4 py-3">
-        {selectedDependency ? (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(7rem,0.5fr))_minmax(0,1.4fr)] lg:items-center">
-            <div className="min-w-0">
-              <div className="mb-1 flex items-center gap-2">
-                <span className="truncate text-sm font-semibold text-foreground">
-                  {selectedDependency.name}
-                </span>
-                <StatusBadge status={selectedDependency.status} />
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {selectedDependency.type} · checked{" "}
-                {selectedDependency.lastCheck}
-              </div>
-            </div>
-            {[
-              [
-                "Latency",
-                selectedDependency.latency >= 1000
-                  ? `${(selectedDependency.latency / 1000).toFixed(1)}s`
-                  : `${selectedDependency.latency}ms`,
-              ],
-              ["Calls / min", selectedDependency.callsPerMin.toLocaleString()],
-              ["Error rate", `${selectedDependency.errRate.toFixed(1)}%`],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  {label}
-                </div>
-                <div className="mt-1 font-mono text-sm font-medium text-foreground">
-                  {value}
-                </div>
-              </div>
-            ))}
-            <div>
-              <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Used by
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {connectedServices.map((service) => (
-                  <span
-                    key={service.id}
-                    className="rounded border border-border bg-background px-2 py-1 font-mono text-[10px] text-muted-foreground"
-                  >
-                    {service.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : selectedService ? (
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="text-sm font-semibold text-foreground">
-                {selectedService.label}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                Internal service · {selectedService.deps.length} external
-                connections
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Connects to
-              </span>
-              {connectedDependencies.map((dependency) => (
-                <span
-                  key={dependency.node}
-                  className="inline-flex items-center gap-1.5 rounded border border-border bg-background px-2 py-1 font-mono text-[10px] text-muted-foreground"
-                >
-                  <span
-                    className="size-1.5 rounded-full"
-                    style={{ background: statusColor(dependency.status) }}
-                  />
-                  {dependency.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-3 text-[11px] text-muted-foreground">
-          {[
-            { color: "var(--green)", label: "Healthy" },
-            { color: "var(--yellow)", label: "Degraded" },
-            { color: "var(--red)", label: "Critical" },
-          ].map((item) => (
-            <span key={item.label} className="flex items-center gap-1.5">
-              <span
-                className="size-2 rounded-full"
-                style={{ background: item.color }}
-              />
-              {item.label}
-            </span>
-          ))}
-          <span className="ml-auto flex items-center gap-1.5">
-            Flow direction
-            <ArrowRight className="size-3" />
-          </span>
-        </div>
+      <div className="min-h-0 flex-1 [&_.dependency-flow]:h-full">
+        <DependencyFlow
+          services={SERVICES_GRAPH}
+          dependencies={EXTERNAL}
+          selected={selected}
+          onSelect={inspectSelection}
+        />
       </div>
+
       <div className="[display:none] max-[640px]:[display:flex] [gap:14px] [padding:10px_14px] [border-top:1px_solid_var(--border)] [background:var(--bg)] [font-size:11px] [color:var(--text-3)]">
         <span className="[color:var(--green)]">● Healthy</span>
         <span className="[color:var(--yellow)]">● Degraded</span>
         <span className="[color:var(--red)]">● Critical</span>
       </div>
+
+      {detailsOpen && (selectedDependency || selectedService) && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm"
+          role="presentation"
+          onClick={() => setDetailsOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dependency-detail-title"
+            className="w-full max-w-xl overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+              <div className="min-w-0">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="rounded border border-warning-border bg-warning-surface px-2 py-1 text-xs font-medium text-warning">
+                    Demo data
+                  </span>
+                  {selectedDependency && (
+                    <StatusBadge status={selectedDependency.status} />
+                  )}
+                </div>
+                <div
+                  id="dependency-detail-title"
+                  className="truncate text-base font-semibold text-foreground"
+                >
+                  {selectedDependency?.name ?? selectedService?.label}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {selectedDependency
+                    ? `${selectedDependency.type} · Last checked ${selectedDependency.lastCheck}`
+                    : `Internal service · ${selectedService?.deps.length ?? 0} outbound connections`}
+                </div>
+              </div>
+              <SortButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setDetailsOpen(false)}
+              >
+                Close
+              </SortButton>
+            </div>
+
+            {selectedDependency ? (
+              <div className="space-y-5 p-5">
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    [
+                      "Latency",
+                      selectedDependency.latency >= 1000
+                        ? `${(selectedDependency.latency / 1000).toFixed(1)}s`
+                        : `${selectedDependency.latency}ms`,
+                    ],
+                    [
+                      "Calls / min",
+                      selectedDependency.callsPerMin.toLocaleString(),
+                    ],
+                    [
+                      "Error rate",
+                      `${selectedDependency.errRate.toFixed(1)}%`,
+                    ],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="rounded-lg border border-border bg-background p-3"
+                    >
+                      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {label}
+                      </div>
+                      <div className="mt-2 font-mono text-lg font-semibold text-foreground">
+                        {value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Connected internal services
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {connectedServices.map((service) => (
+                      <span
+                        key={service.id}
+                        className="rounded-md border border-border bg-background px-3 py-2 font-mono text-xs text-foreground"
+                      >
+                        {service.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-5">
+                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  External dependencies
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {connectedDependencies.map((dependency) => (
+                    <div
+                      key={dependency.node}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background p-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-foreground">
+                          {dependency.name}
+                        </div>
+                        <div className="mt-1 font-mono text-xs text-muted-foreground">
+                          {dependency.latency}ms ·{" "}
+                          {dependency.callsPerMin.toLocaleString()}/min
+                        </div>
+                      </div>
+                      <StatusBadge status={dependency.status} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -718,52 +750,39 @@ function useSort<T>(data: T[]) {
   return { sorted, col, dir, onSort }
 }
 /* ── Page ────────────────────────────────────────────────── */
-const TABS = ["External Services", "Packages"] as const
-type Tab = typeof TABS[number]
-export default function Dependencies() {
-  const [tab, setTab] = useState<Tab>("External Services")
-  const [hovRow, setHovRow] = useState<string | null>(null)
+export default function Dependencies({
+  view = "map",
+}: {
+  view?: "map" | "packages"
+}) {
   const pkgSort = useSort(PACKAGES)
-  const criticalCount = EXTERNAL.filter((d) => d.status === "Critical").length
   const vulnCount = PACKAGES.filter((p) => p.vulns > 0).length
   const criticalVulns = PACKAGES.filter(
     (p) => p.severity === "Critical" || p.severity === "High",
   ).length
-  const tdStyle = (key: string): React.CSSProperties => ({
-    ...TD,
-    background: hovRow === key ? "var(--bg-3)" : "transparent",
-    transition: "background 0.1s",
-  })
+  if (view === "map") return <DependencyMap />
+
   return (
     <div className="app-page page-header-region max-[700px]:flex-col max-[700px]:items-start max-[700px]:[&>button]:self-start max-[640px]:px-4 max-[640px]:gap-3 [padding:16px_20px] [font-family:Geist,_sans-serif] [min-height:100%]">
-      {/* Page header */}
       <PageHeading
         className="page-heading-row [display:flex] [align-items:center] [justify-content:space-between] [padding-bottom:20px] [border-bottom:1px_solid_var(--border)] [margin-bottom:20px]"
         actions={
           <SortButton variant="outline" size="sm">
-            Scan dependencies
+            Scan packages
           </SortButton>
         }
       >
         <div>
           <h1 className="page-title [font-size:18px] [font-weight:600] [letter-spacing:-0.02em] [color:var(--text-1)] [margin:0]">
-            Dependencies
+            Packages
           </h1>
           <p className="[font-size:13px] [color:var(--text-3)] [margin:4px_0_0]">
-            External services and package dependencies
+            Third-party package inventory and known vulnerabilities
           </p>
         </div>
       </PageHeading>
 
-      {/* Summary pills */}
-      <div className="[display:flex] [gap:8px] [margin-bottom:20px]">
-        {criticalCount > 0 && (
-          <span className="[display:inline-flex] [align-items:center] [gap:6px] [padding:4px_10px] [border-radius:6px] [font-size:12px] [font-weight:500] [color:var(--red)] [background:var(--red-bg)] [border:1px_solid_var(--red-border)]">
-            <CriticalDot />
-            {criticalCount} external service{criticalCount !== 1 ? "s" : ""}{" "}
-            critical
-          </span>
-        )}
+      <div className="[display:flex] [gap:8px] [margin-bottom:16px]">
         {vulnCount > 0 && (
           <span className="[display:inline-flex] [align-items:center] [gap:6px] [padding:4px_10px] [border-radius:6px] [font-size:12px] [font-weight:500] [color:var(--yellow)] [background:var(--yellow-bg)] [border:1px_solid_var(--yellow-border)]">
             <AlertTriangle size={11} className="[flex-shrink:0]" />
@@ -771,73 +790,47 @@ export default function Dependencies() {
           </span>
         )}
         <span className="[display:inline-flex] [align-items:center] [gap:6px] [padding:4px_10px] [border-radius:6px] [font-size:12px] [font-weight:500] [color:var(--text-3)] [background:var(--bg-2)] [border:1px_solid_var(--border)]">
-          {EXTERNAL.length} external services · {PACKAGES.length} packages
-          tracked
+          {PACKAGES.length} packages tracked
         </span>
       </div>
 
-      {/* Tabs */}
-      <div className="[border-bottom:1px_solid_var(--border)] [margin-bottom:16px] [display:flex]">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={[
-              "[padding:8px_14px] [font-size:13px] [font-weight:500] [cursor:pointer] [border:none] [background:transparent] [margin-bottom:-1px] [transition:color_0.1s] [letter-spacing:-0.01em]",
-              tab === t ? "[color:var(--text-1)]" : "[color:var(--text-3)]",
-              tab === t
-                ? "[border-bottom:2px_solid_var(--text-1)]"
-                : "[border-bottom:2px_solid_transparent]",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            {t}
-          </button>
-        ))}
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        <SherlockGrid
+          rowData={pkgSort.sorted}
+          getRowId={({ data }) => data.pkg}
+          domLayout="autoHeight"
+          showPagination={false}
+          columnDefs={[
+            { field: "pkg", headerName: "Package", minWidth: 210, flex: 1 },
+            { field: "version", headerName: "Version", minWidth: 110 },
+            {
+              field: "lang",
+              headerName: "Language",
+              minWidth: 120,
+              cellRenderer: ({ value }) => <LangBadge lang={value} />,
+            },
+            { field: "vulns", headerName: "Vulnerabilities", minWidth: 130 },
+            {
+              field: "severity",
+              headerName: "Severity",
+              minWidth: 110,
+              cellRenderer: ({ value }) => <SeverityBadge severity={value} />,
+            },
+            {
+              field: "fix",
+              headerName: "Fix available",
+              minWidth: 130,
+              valueFormatter: ({ value }) => value || "Up to date",
+            },
+            {
+              field: "cve",
+              headerName: "CVE",
+              minWidth: 150,
+              valueFormatter: ({ value }) => value || "—",
+            },
+          ]}
+        />
       </div>
-
-      {tab === "External Services" ? (
-        <DependencyMap />
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <SherlockGrid
-            rowData={pkgSort.sorted}
-            getRowId={({ data }) => data.pkg}
-            domLayout="autoHeight"
-            showPagination={false}
-            columnDefs={[
-              { field: "pkg", headerName: "Package", minWidth: 210, flex: 1 },
-              { field: "version", headerName: "Version", minWidth: 110 },
-              {
-                field: "lang",
-                headerName: "Language",
-                minWidth: 120,
-                cellRenderer: ({ value }) => <LangBadge lang={value} />,
-              },
-              { field: "vulns", headerName: "Vulnerabilities", minWidth: 130 },
-              {
-                field: "severity",
-                headerName: "Severity",
-                minWidth: 110,
-                cellRenderer: ({ value }) => <SeverityBadge severity={value} />,
-              },
-              {
-                field: "fix",
-                headerName: "Fix available",
-                minWidth: 130,
-                valueFormatter: ({ value }) => value || "Up to date",
-              },
-              {
-                field: "cve",
-                headerName: "CVE",
-                minWidth: 150,
-                valueFormatter: ({ value }) => value || "—",
-              },
-            ]}
-          />
-        </div>
-      )}
     </div>
   )
 }
